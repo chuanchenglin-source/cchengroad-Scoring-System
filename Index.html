@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONE PIECE-海洋親證班計分系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background: radial-gradient(circle at top left, #eef2ff 0%, #f8fafc 100%); 
+        }
+        .card { 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px);
+            border-radius: 2rem; 
+            box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12); 
+            width: 100%; 
+            max-width: 440px; 
+            padding: 3rem 2.5rem; 
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .info-label { font-size: 0.75rem; color: #6366f1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .info-value { font-weight: 700; color: #1e1b4b; font-size: 1.1rem; }
+        
+        .custom-input {
+            border: 2px solid #e2e8f0;
+            border-radius: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .custom-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .spinner { 
+            border: 3px solid rgba(255, 255, 255, 0.3); 
+            border-top: 3px solid #ffffff; 
+            border-radius: 50%; 
+            width: 1.25rem; 
+            height: 1.25rem; 
+            animation: spin 0.8s linear infinite; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: scale(0.95) translateY(10px); } 
+            to { opacity: 1; transform: scale(1) translateY(0); } 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div class="card">
+        <div class="text-center mb-10">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4 shadow-lg shadow-indigo-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">人生寶藏入口</h1>
+            <p class="text-sm text-slate-500 mt-3 font-medium">系統將同步紀錄您的登入身份</p>
+        </div>
+
+        <form id="mainForm" class="space-y-8">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-3 ml-1">搜尋姓名或編號</label>
+                <div class="relative group">
+                    <input type="text" id="searchInput" list="nameList" class="custom-input w-full px-5 py-4 outline-none text-slate-800 placeholder-slate-400" placeholder="正在讀取資料庫..." autocomplete="off" disabled>
+                    <datalist id="nameList"></datalist>
+                </div>
+            </div>
+
+            <div id="infoBox" class="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 hidden fade-in space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="info-label">隊編 / 隊伍</span>
+                    <span id="txtTeam" class="info-value text-indigo-900">-</span>
+                </div>
+                <div class="w-full h-px bg-indigo-100"></div>
+                <div class="flex justify-between items-center">
+                    <span class="info-label">隊員姓名</span>
+                    <span id="txtName" class="info-value text-indigo-900">-</span>
+                </div>
+                <div class="w-full h-px bg-indigo-100"></div>
+                <div class="flex justify-between items-center">
+                    <span class="info-label">大隊家長</span>
+                    <span id="txtMentor" class="info-value text-indigo-600">-</span>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn" class="group relative w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-xl shadow-indigo-100 transition-all duration-300 flex items-center justify-center gap-3 overflow-hidden" disabled>
+                <span class="relative z-10">確認身份並進入表單</span>
+            </button>
+
+            <button type="button" id="viewBtn" class="group relative w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-xl shadow-indigo-100 transition-all duration-300 flex items-center justify-center gap-3 overflow-hidden" disabled>
+                <span class="relative z-10">查看個人歷史紀錄與分數</span>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        let allMembers = [];
+        let selectedMember = null;
+
+        const searchInput = document.getElementById('searchInput');
+        const nameList = document.getElementById('nameList');
+        const infoBox = document.getElementById('infoBox');
+        const submitBtn = document.getElementById('submitBtn');
+        const viewBtn = document.getElementById('viewBtn');
+
+        // call getMemberList() from code.js to populate the datalist
+        window.onload = function() {
+            if (typeof google !== 'undefined') {
+                google.script.run
+                    .withSuccessHandler(function(data) {
+                        allMembers = data;
+                        nameList.innerHTML = "";
+                        data.forEach(m => {
+                            const opt = document.createElement('option');
+                            opt.value = m.id;
+                            opt.textContent = `${m.name} (${m.team})`;
+                            nameList.appendChild(opt);
+                        });
+                        searchInput.placeholder = "輸入姓名或編號...";
+                        searchInput.disabled = false;
+                    })
+                    .getMemberList();
+            }
+        };
+
+        searchInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            selectedMember = allMembers.find(m => m.id === val || m.name === val);
+            if (!val) {
+                hideInfo();
+                return;
+            }
+
+            selectedMember = allMembers.find(m => 
+                m.id === val || 
+                m.name === val || 
+                `${m.id}_${m.name}` === val
+            );
+
+            // if (selectedMember) {
+            //     document.getElementById('txtTeam').textContent = `${selectedMember.teamCode} / ${selectedMember.team}`;
+            //     document.getElementById('txtName').textContent = selectedMember.name;
+            //     document.getElementById('txtMentor').textContent = selectedMember.mentor;
+            //     infoBox.classList.remove('hidden');
+            //     submitBtn.disabled = false;
+            // } else {
+            //     infoBox.classList.add('hidden');
+            //     submitBtn.disabled = true;
+            // }
+
+            if (selectedMember) {
+                const correctFormat = `${selectedMember.id}_${selectedMember.name}`;
+                if (this.value !== correctFormat) this.value = correctFormat;
+                showInfo(selectedMember);
+            } else {
+                hideInfo();
+            }
+
+        });
+
+        function showInfo(member) {
+            document.getElementById('txtTeam').textContent = `${member.teamCode} / ${member.team}`;
+            document.getElementById('txtName').textContent = member.name;
+            document.getElementById('txtMentor').textContent = member.mentor;
+            infoBox.classList.remove('hidden');
+            
+            // 同步啟用兩個按鈕
+            submitBtn.disabled = false;
+            viewBtn.disabled = false;
+
+        }
+
+        function hideInfo() {
+            infoBox.classList.add('hidden');
+            
+            // 同步禁用兩個按鈕
+            submitBtn.disabled = true;
+            viewBtn.disabled = true;
+
+            selectedMember = null;
+        }
+
+        document.getElementById('mainForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!selectedMember) return;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="spinner"></div> <span>開啟航道中...</span>';
+            viewBtn.disabled = true;
+
+            // // call getScriptUrl() to get the URL of the form page, then redirect with query parameters
+            // google.script.run.withSuccessHandler(function(url) {
+            //     const params = [
+            //         `page=main`,
+            //         `id=${encodeURIComponent(selectedMember.id)}`,
+            //         `name=${encodeURIComponent(selectedMember.name)}`,
+            //         `team=${encodeURIComponent(selectedMember.team)}`,
+            //         `teamCode=${encodeURIComponent(selectedMember.teamCode)}`
+            //     ].join('&');
+            //     window.top.location.href = url + "?" + params;
+            // }).getScriptUrl();
+
+            if (typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(function(url) {
+                    const params = [
+                        `page=main`,
+                        `id=${encodeURIComponent(selectedMember.id)}`,
+                        `name=${encodeURIComponent(selectedMember.name)}`,
+                        `team=${encodeURIComponent(selectedMember.team)}`,
+                        `teamCode=${encodeURIComponent(selectedMember.teamCode)}`
+                    ].join('&');
+                    window.top.location.href = url + "?" + params;
+                }).getScriptUrl();
+            } else {
+                setTimeout(() => {
+                    alert("進入 Main 頁面參數：\n" + JSON.stringify(selectedMember, null, 2));
+                    submitBtn.disabled = false;
+                    viewBtn.disabled = false;
+                    submitBtn.innerHTML = '<span class="relative z-10">確認身份並進入表單</span>';
+                }, 800);
+            }
+
+        });
+
+        viewBtn.addEventListener('click', function() {
+            if (this.disabled || !selectedMember) return;
+            
+            this.disabled = true;
+            submitBtn.disabled = true;
+            this.innerHTML = '<div class="spinner !border-indigo-600 !border-t-transparent"></div> <span>讀取紀錄中...</span>';
+
+            if (typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(function(url) {
+                    const params = [
+                        `page=history`, // 指定跳轉到 History 頁面
+                        `id=${encodeURIComponent(selectedMember.id)}`,
+                        `name=${encodeURIComponent(selectedMember.name)}`,
+                        `team=${encodeURIComponent(selectedMember.team)}`,
+                        `teamCode=${encodeURIComponent(selectedMember.teamCode)}`
+                    ].join('&');
+                    window.top.location.href = url + "?" + params;
+                }).getScriptUrl();
+            } else {
+                setTimeout(() => {
+                    alert("模擬跳轉到 History 頁面\n參數：" + JSON.stringify(selectedMember, null, 2));
+                    this.disabled = false;
+                    submitBtn.disabled = false;
+                    this.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>查看歷史計分紀錄</span>';
+                }, 800);
+            }
+        });
+
+
+    </script>
+</body>
+</html>

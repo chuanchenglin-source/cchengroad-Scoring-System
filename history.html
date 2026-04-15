@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>歷史填單紀錄 - ONE PIECE親證</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        
+        :root {
+            --primary-green: #059669; /* 翡翠綠 */
+            --dark-green: #064e3b;
+            --light-green: #f0fdf4;
+            --accent-yellow: #facc15;
+        }
+
+        body { 
+            background-color: var(--light-green); 
+            font-family: 'Noto Sans TC', sans-serif; 
+            color: #064e3b;
+            -webkit-tap-highlight-color: transparent;
+            font-size: 1.15rem; /* 基礎字體放大 */
+        }
+
+        /* 頂部導航卡片 - 加大尺寸 */
+        .week-btn { 
+            padding: 12px 18px; 
+            border-radius: 16px; 
+            text-align: center; 
+            cursor: pointer; 
+            border: 3px solid transparent; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            min-width: 140px; 
+            background: rgba(255, 255, 255, 0.15);
+            color: #ecfdf5;
+            flex-shrink: 0;
+        }
+        .week-btn.active { 
+            border-color: var(--accent-yellow); 
+            background-color: white; 
+            color: var(--primary-green);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 歷史內容卡片 */
+        .history-card { 
+            background: white; 
+            border-radius: 20px; 
+            box-shadow: 0 6px 20px rgba(0, 71, 49, 0.08); 
+            margin-bottom: 2rem; 
+            overflow: hidden;
+            border: 2px solid #d1fae5;
+        }
+        
+        .card-header {
+            background: linear-gradient(to right, #047857, #10b981);
+            color: white;
+            padding: 18px 24px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            font-size: 1.25rem;
+        }
+
+        /* 一般框框標籤樣式 - 加大加粗 */
+        .box-label {
+            background: #ffffff;
+            border: 2px solid #facc15;
+            color: #047857;
+            padding: 4px 12px;
+            border-radius: 8px;
+            margin-right: 14px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+        }
+
+        /* 表格樣式 - 字體加大且間距放寬 */
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { background: #f8fafc; color: #475569; font-weight: 700; text-align: left; padding: 16px 20px; border-bottom: 2px solid #e2e8f0; font-size: 1rem; }
+        .data-table td { padding: 18px 20px; border-bottom: 1px solid #f1f5f9; vertical-align: top; font-size: 1.1rem; line-height: 1.6; }
+        .data-table tr:last-child td { border-bottom: none; }
+        
+        /* 得分標籤放大 */
+        .score-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            min-width: 45px;
+            text-align: center;
+        }
+        .score-has { background: #fef08a; color: #854d0e; border: 2px solid #eab308; }
+        .score-none { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+        /* 總分區域強調 */
+        #grandTotal { font-size: 2.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- 載入動畫 -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-emerald-950/90 backdrop-blur-md z-[100] flex items-center justify-center text-white hidden">
+        <div class="text-center">
+            <div class="inline-block animate-spin rounded-full h-16 w-16 border-6 border-white border-t-transparent mb-6"></div>
+            <p class="text-2xl font-black">正在開啟航海日誌...</p>
+        </div>
+    </div>
+
+    <!-- 頂部資訊欄 -->
+    <header class="bg-emerald-900 text-white p-6 sticky top-0 z-50 shadow-2xl">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-black text-emerald-400 tracking-tight">ONE PIECE 填單歷史</h1>
+                    <p class="text-emerald-100 text-lg mt-1 font-medium">夥伴：<span class="font-bold text-white border-b-2 border-yellow-400"><?= user.name ?></span></p>
+                </div>
+                <div class="bg-emerald-800/50 backdrop-blur-md rounded-2xl px-6 py-4 text-center border-2 border-emerald-600/50 shadow-inner">
+                    <span class="text-xs text-emerald-200 block uppercase tracking-widest font-black mb-1">全期累計總分</span>
+                    <span class="font-black text-yellow-400" id="grandTotal">0</span>
+                </div>
+            </div>
+            
+            <!-- 週數選取器 -->
+            <div class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide" id="weekPicker">
+                <!-- JS 動態生成 -->
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-5 mt-8">
+        <div id="statusNotice" class="mb-8 p-6 bg-white border-4 border-emerald-200 text-emerald-900 rounded-3xl text-center shadow-lg">
+            <div class="text-lg text-emerald-600 font-black mb-2">
+                目前正在檢視：<span id="currentWeekLabel" class="text-2xl text-emerald-800 px-2">WEEK 1</span>
+            </div>
+            <div class="text-3xl font-black text-emerald-700 underline decoration-yellow-400 decoration-4 underline-offset-8" id="currentDateRange">5/03 - 5/09</div>
+        </div>
+
+        <!-- 14個 BOX 的容器 -->
+        <div id="boxesContainer" class="space-y-10">
+            <!-- 由 JS 動態生成 Box 卡片 -->
+        </div>
+    </main>
+
+    <script>
+        const campaignConfig = {
+            startDate: "2026-05-03",
+            user: { id: "<?= user.id ?>", name: "<?= user.name ?>" },
+            boxTitles: [
+                "每日打拳定課", "每日調頻定課", "分享親證心得", "參加心成實體活動",
+                "大超越巔峰", "愛護地球尊重生命", "報名生生世世系列", "報名社團聯誼會",
+                "報名高階課程", "報名五運班", "傳愛", "全勤獎", "報名超級頻率", "其他備註說明"
+            ]
+        };
+
+        let allHistoryData = []; 
+        let currentWeek = 1;
+
+        window.onload = function() {
+            initWeekPicker();
+            fetchHistory();
+        };
+
+        function initWeekPicker() {
+            const picker = document.getElementById('weekPicker');
+            const start = new Date(campaignConfig.startDate);
+            
+            for (let w = 1; w <= 7; w++) {
+                const wStart = new Date(start);
+                wStart.setDate(start.getDate() + (w - 1) * 7);
+                const wEnd = new Date(wStart);
+                wEnd.setDate(wStart.getDate() + 6);
+                
+                const rangeStr = `${wStart.getMonth()+1}/${wStart.getDate()} - ${wEnd.getMonth()+1}/${wEnd.getDate()}`;
+                
+                const btn = document.createElement('div');
+                btn.className = `week-btn ${w === 1 ? 'active' : ''}`;
+                btn.id = `week-${w}`;
+                btn.innerHTML = `
+                    <span class="block text-sm font-black opacity-90 mb-1">第 ${w} 週</span>
+                    <span class="text-base font-black whitespace-nowrap">${rangeStr}</span>
+                    <span class="block text-xs mt-2 bg-emerald-950/30 rounded-full py-1 font-bold">積分: <span id="weekScore-${w}">0</span></span>
+                `;
+                btn.onclick = () => switchWeek(w);
+                picker.appendChild(btn);
+            }
+        }
+
+        function switchWeek(w) {
+            currentWeek = w;
+            document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`week-${w}`).classList.add('active');
+            
+            const start = new Date(campaignConfig.startDate);
+            start.setDate(start.getDate() + (w-1)*7);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            
+            const rangeStr = `${start.getMonth()+1}/${start.getDate()} - ${end.getMonth()+1}/${end.getDate()}`;
+            
+            document.getElementById('currentWeekLabel').innerText = `WEEK ${w}`;
+            document.getElementById('currentDateRange').innerText = rangeStr;
+            
+            renderBoxes();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function fetchHistory() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            
+            if (typeof google !== 'undefined') {
+                google.script.run
+                    .withSuccessHandler(data => {
+                        allHistoryData = data || [];
+                        document.getElementById('loadingOverlay').classList.add('hidden');
+                        calculateSummary();
+                        renderBoxes();
+                    })
+                    .withFailureHandler(err => {
+                        alert("連線失敗：" + err);
+                        document.getElementById('loadingOverlay').classList.add('hidden');
+                    })
+                    .getPersonalHistory(campaignConfig.user.id);
+            } else {
+                setTimeout(() => {
+                    allHistoryData = generateMockData();
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                    calculateSummary();
+                    renderBoxes();
+                }, 800);
+            }
+        }
+
+        function calculateSummary() {
+            let total = 0;
+            const weekScores = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0};
+            
+            allHistoryData.forEach(row => {
+                const score = parseFloat(row.score) || 0;
+                total += score;
+                
+                const date = new Date(row.date);
+                const start = new Date(campaignConfig.startDate);
+                const diffTime = date - start;
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                const weekNum = Math.floor(diffDays / 7) + 1;
+                
+                if (weekNum >= 1 && weekNum <= 7) {
+                    weekScores[weekNum] += score;
+                }
+            });
+            
+            document.getElementById('grandTotal').innerText = total;
+            for (let w = 1; w <= 7; w++) {
+                const el = document.getElementById(`weekScore-${w}`);
+                if (el) el.innerText = weekScores[w];
+            }
+        }
+
+        function renderBoxes() {
+            const container = document.getElementById('boxesContainer');
+            container.innerHTML = "";
+            
+            const weekDates = [];
+            const start = new Date(campaignConfig.startDate);
+            start.setDate(start.getDate() + (currentWeek - 1) * 7);
+            
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(start);
+                d.setDate(start.getDate() + i);
+                weekDates.push(d.toISOString().split('T')[0]);
+            }
+
+            for (let b = 1; b <= 14; b++) {
+                const card = document.createElement('div');
+                card.className = "history-card";
+                
+                let headerHTML = `
+                    <div class="card-header">
+                        <span class="box-label">BOX</span>
+                        <span>${campaignConfig.boxTitles[b-1]}</span>
+                    </div>
+                `;
+                
+                let tableHTML = `<div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 110px">日期</th>
+                                <th style="width: 100px">得分</th>
+                                <th>回復內容</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                
+                weekDates.forEach(dateStr => {
+                    const record = allHistoryData.find(r => r.date === dateStr);
+                    // 串接對應的欄位名：boxN_score 與 boxN_content
+                    const score = record ? (parseFloat(record[`box${b}_score`]) || 0) : 0;
+                    const content = record ? (record[`box${b}_content`] || "") : "";
+                    
+                    const badgeClass = score > 0 ? "score-has" : "score-none";
+                    const displayDate = dateStr.split('-').slice(1).join('/'); 
+                    
+                    tableHTML += `
+                        <tr>
+                            <td class="font-black text-emerald-900">${displayDate}</td>
+                            <td><span class="score-badge ${badgeClass}">${score}</span></td>
+                            <td class="text-gray-800 font-bold">${content || (score > 0 ? "已完成" : "—")}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `</tbody></table></div>`;
+                card.innerHTML = headerHTML + tableHTML;
+                container.appendChild(card);
+            }
+        }
+
+        function generateMockData() {
+            const mock = [];
+            const start = new Date(campaignConfig.startDate);
+            for(let i=0; i<30; i++) {
+                const d = new Date(start);
+                d.setDate(start.getDate() + i);
+                const ds = d.toISOString().split('T')[0];
+                
+                // 模擬 14 個 BOX 的欄位
+                let dayRecord = {
+                    date: ds,
+                    score: 60
+                };
+                
+                for(let b=1; b<=14; b++) {
+                    dayRecord[`box${b}_score`] = b <= 3 ? (b * 10) : 0;
+                    dayRecord[`box${b}_content`] = b <= 3 ? `這是第 ${b} 項的示範內容文字` : "";
+                }
+                
+                mock.push(dayRecord);
+            }
+            return mock;
+        }
+    </script>
+</body>
+</html>
