@@ -9,7 +9,7 @@
 以下兩個資料來源**並行**使用，需要專案背景資料時兩邊都可查找：
 
 - **專案共用 Google Drive**（網站主導者建立，團隊共用）：https://drive.google.com/drive/folders/1-37xaAxIOEmZaQGk6vGat4NQAVbqIWPn
-- **`給Claude讀取的資料/`**（本機資料夾，Johnson 個人維護）：放置供 Claude 參考的檔案（PPT、截圖、規則文件、會議記錄等）。
+- **`給Claude讀取的資料/`**（本機資料夾，Johnson 個人維護）：放置供 Claude 參考的檔案（PPT、截圖、規則文件、會議記錄等）。**透過 Google Drive + symlink/junction 跨機器同步**（詳見下方「給Claude讀取的資料/ 跨機器同步機制」章節）。
 
 ## 測試環境資源（Johnson 專用沙盒）
 
@@ -294,10 +294,107 @@ Looker Studio（報表 Dashboard，唯讀）
 - `.gitignore`、`.claspignore`
 - `scripts/setup-env.mjs`（本腳本）
 
-**不會自動同步**（gitignored）：
+**不會透過 git 同步**（gitignored，但有其他同步機制）：
 - `.clasp.dev.json` / `.clasp.prod.json` / `.clasp.json`（含敏感 Script ID，由 `scripts/setup-env.mjs` 重建）
 - `node_modules/`（由 `npm install` 重建）
-- `給Claude讀取的資料/`（Johnson 個人資料，需要另外用 iCloud/Dropbox 跨機器同步）
+- `給Claude讀取的資料/`（**已透過 Google Drive symlink/junction 跨機器同步**，詳見下方專章）
+
+---
+
+## `給Claude讀取的資料/` 跨機器同步機制
+
+### 目的
+Johnson 把個人參考資料（PPT、會議紀錄、活動方給的規則文件、截圖等）放在 `給Claude讀取的資料/` 讓 Claude Code 能讀取。這個資料夾**不能進 GitHub**（可能有私密內容、大檔案），但需要在 Windows 和 Mac 之間**自動同步**。
+
+### 架構：Google Drive + symlink/junction
+
+```
+Google Drive 雲端
+    ↕
+Google Drive Desktop 客戶端（Windows + Mac 各裝一份）
+    ↕
+本機 Google Drive 資料夾（雲端同步的真實位置）
+   - Windows: G:\我的雲端硬碟\ClaudeRef\cchengroad-scoring-system\
+   - Mac:     ~/Library/CloudStorage/GoogleDrive-<email>/我的雲端硬碟/ClaudeRef/cchengroad-scoring-system/
+    ↕
+專案資料夾內的「給Claude讀取的資料/」（指向真實位置的 symlink/junction）
+   - Windows: Junction（mklink /J 或 PowerShell New-Item）
+   - Mac:     Symbolic Link（ln -s）
+```
+
+### 為什麼用 symlink/junction 而不直接把專案放 Google Drive
+- Google Drive 同步整個專案 = 包括 `node_modules/` 幾十萬檔案 → 超慢、常壞
+- 只同步 `給Claude讀取的資料/` 一個子資料夾 = 小、快、穩
+- symlink/junction 讓 Claude Code 看起來覺得資料夾在專案內，實際上檔案在 Google Drive
+
+### Windows 設定步驟（一次性）
+
+```bash
+# 1. Google Drive Desktop 必須運行（GoogleDriveFS.exe）
+# 2. 確認 Google Drive 掛載點（通常是 G:\ 或 H:\）
+ls "G:/我的雲端硬碟/"
+
+# 3. 建立目標資料夾
+mkdir -p "G:/我的雲端硬碟/ClaudeRef/cchengroad-scoring-system"
+
+# 4. 刪除專案資料夾裡現有的空資料夾
+rm -rf "給Claude讀取的資料"
+
+# 5. 用 PowerShell 建立 junction（支援 UTF-8 中文）
+powershell.exe -NoProfile -Command "New-Item -ItemType Junction -Path '給Claude讀取的資料' -Value 'G:\我的雲端硬碟\ClaudeRef\cchengroad-scoring-system'"
+```
+
+**⚠️ 踩坑警告**：**不要**用 Git Bash 直接呼叫 `cmd.exe //c 'mklink /J ...'` 傳中文路徑 — Git Bash 的 UTF-8 → CMD 的 CP950（Big5）編碼轉換會讓 junction 名稱變亂碼。**一定要透過 PowerShell**，它原生支援 Unicode。
+
+### Mac 設定步驟（一次性）
+
+```bash
+# 1. Google Drive Desktop 必須運行並登入（跟 Windows 同一個 Google 帳號）
+# 2. 確認 Google Drive 掛載點
+ls ~/Library/CloudStorage/    # 應該看到 GoogleDrive-<你的email>
+
+# 3. 確認 ClaudeRef 已同步到 Mac（等 Windows 建立完，Google Drive 同步過來）
+ls ~/Library/CloudStorage/GoogleDrive-*/我的雲端硬碟/ClaudeRef/
+
+# 4. 切到專案資料夾
+cd ~/"Coding Project/Corporate Website/cchengroad-Scoring-System"
+
+# 5. 刪除現有空資料夾
+rm -rf "給Claude讀取的資料"
+
+# 6. 建立 symlink
+ln -s ~/Library/CloudStorage/GoogleDrive-<email>/我的雲端硬碟/ClaudeRef/cchengroad-scoring-system "給Claude讀取的資料"
+```
+
+**⚠️ 踩坑警告**：Mac 的 Google Drive Desktop **會本地化資料夾名稱**。中文系統看到的是 `我的雲端硬碟`，**不是** `My Drive`。路徑裡一定要寫 `我的雲端硬碟`，寫 `My Drive` 會找不到。
+
+### 驗證雙向同步是否成功
+
+在其中一台機器寫入測試檔：
+```bash
+echo "test from <machine>" > "給Claude讀取的資料/sync-test.txt"
+```
+
+等 10–30 秒後，在另一台機器讀取：
+```bash
+cat "給Claude讀取的資料/sync-test.txt"
+```
+
+兩台機器都能讀到 = 同步鏈路貫通 ✓
+
+### 被同步的檔案類型建議
+- ✅ 文件類（PPT、PDF、Word、Markdown）
+- ✅ 截圖（PNG、JPG）
+- ✅ 會議紀錄
+- ✅ 活動方給的規則草案
+- ⚠️ 避免大型影片 / 壓縮檔（Google Drive 會變慢）
+- ❌ **不要**放敏感憑證、密碼（即使有個人帳號保護，盡量不要讓這類東西在雲端）
+
+### 維運注意
+
+- **刪檔時記得是刪 Google Drive 那邊**：即使透過 symlink 刪檔看起來只是本機操作，實際上會同步刪除 Google Drive 雲端與另一台機器的檔案。這是**預期行為**，但要意識到。
+- **Google Drive 同步狀態**：Windows 系統列右下角 / Mac 選單列右上角有 Google Drive 圖示，點一下可以看同步進度、錯誤、最近同步的檔案清單。
+- **如果兩台機器同時編輯同一個檔案**：Google Drive 會產生 `副本` 或 `conflict` 標記的檔案，要自己合併。非同時編輯則不會有問題。
 
 ---
 
