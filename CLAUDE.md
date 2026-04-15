@@ -39,6 +39,53 @@ Looker Studio（報表 Dashboard，唯讀）
 
 **原則：不直接修改正式版程式碼，所有變更都經過 PR 審核。**
 
+## 測試環境 / 正式環境切換（重要）
+
+本專案採**雙環境架構**：
+
+| 環境 | 用途 | Script ID 檔案 |
+|---|---|---|
+| **測試（dev）** | Johnson 日常開發測試 | `.clasp.dev.json` |
+| **正式（prod）** | 主工程師管理的線上版本 | `.clasp.prod.json` |
+
+兩個檔案都被 `.gitignore` 排除（含敏感 Script ID，不上 GitHub）。
+
+### 切換指令（使用 npm scripts）
+
+```bash
+npm run env:status   # 查看目前是哪個環境
+npm run env:dev      # 切換到測試環境
+npm run env:prod     # 切換到正式環境（小心）
+npm run push:dev     # 切到測試 + clasp push（日常使用）
+npm run push:prod    # 切到正式 + clasp push（極少使用，原則上不應該）
+```
+
+**原則**：
+- 日常只用 `npm run push:dev`，不要碰 `push:prod`
+- 正式環境的部署由**主工程師**合併 PR 後自行處理
+- 每次打開專案建議先 `npm run env:status` 確認當前環境
+
+### config.js 支援 Script Properties 覆寫
+
+`SS_ID_MEMBER` 與 `SS_ID_SCORE` 改為「**Script Properties 優先，正式值為 fallback**」：
+
+```javascript
+const PROPS = PropertiesService.getScriptProperties();
+const SS_ID_SCORE = PROPS.getProperty('SS_ID_SCORE') || '1CFTaH...';
+```
+
+**效果**：
+- **正式環境**（沒設定 Script Properties）→ 用預設值 → 行為跟原本完全一樣
+- **測試環境**（在 Apps Script 設了 Script Properties）→ 用測試 Sheet ID
+
+**測試環境的 Script Properties 設定**（在測試 Apps Script 左側「專案設定 ⚙️ → 指令碼屬性」）：
+```
+SS_ID_MEMBER = 12H5V6FKByPzXwqOlE1KrDHMdxDI3tLRZ9b5U9alJtvE
+SS_ID_SCORE  = 12H5V6FKByPzXwqOlE1KrDHMdxDI3tLRZ9b5U9alJtvE
+```
+
+---
+
 ## clasp 使用注意事項（重要）
 
 本專案 clasp 採用**本地安裝**（非全域），版本鎖定在 **v2.5.0**。
