@@ -11,6 +11,20 @@
 - **專案共用 Google Drive**（網站主導者建立，團隊共用）：https://drive.google.com/drive/folders/1-37xaAxIOEmZaQGk6vGat4NQAVbqIWPn
 - **`給Claude讀取的資料/`**（本機資料夾，Johnson 個人維護）：放置供 Claude 參考的檔案（PPT、截圖、規則文件、會議記錄等）。
 
+## 測試環境資源（Johnson 專用沙盒）
+
+| 項目 | 連結 / ID |
+|---|---|
+| 測試 Google Sheets | `12H5V6FKByPzXwqOlE1KrDHMdxDI3tLRZ9b5U9alJtvE` |
+| 測試 Apps Script | `1xR7aWeaeAzUjzoQMO1m6cWkkJrCW85-2IlU0_NHU-IPReOX4mtg0ttxY` |
+| 測試 Web App URL | https://script.google.com/macros/s/AKfycbzRgBYH6RsnPs8j7m5k2vr4DT7I_UU_qA3e2SfGrMr8iX705EUwJiRsOsHLJpqvAbg/exec |
+
+**正式環境資源**（僅供 Claude 參考，Johnson 不應直接操作）：
+| 項目 | ID |
+|---|---|
+| 正式 Google Sheets | `1CFTaHNqlaVQOC7Bpuk7KMznFRuAYNHmBMxeDvA19wtw` |
+| 正式 Apps Script | `19ZCMtO64t7drgu-MVY-kbCJpOcW8kvpjDjsu0mfBFszyjRmP6ghqc8NV` |
+
 ---
 
 # 技術架構
