@@ -53,6 +53,132 @@ Looker Studio（報表 Dashboard，唯讀）
 
 **原則：不直接修改正式版程式碼，所有變更都經過 PR 審核。**
 
+## 新機器 / Mac 首次設定（含給 Claude Code 的執行指示）
+
+本專案可在多台電腦上協作（例如 Johnson 同時有 Windows 與 Mac）。在**新機器**首次 clone 本專案後，透過下方流程 5 分鐘內可完成環境設定。
+
+### 使用者操作步驟（只有 3 個手動步驟）
+
+1. **Clone 專案並切到 develop 分支**
+   ```bash
+   git clone https://github.com/chuanchenglin-source/cchengroad-Scoring-System.git
+   cd cchengroad-Scoring-System
+   git checkout develop
+   ```
+
+2. **在該目錄開啟 Claude Code**
+   ```bash
+   claude
+   ```
+
+3. **對 Claude Code 說這句話**：
+   > 「請按照 CLAUDE.md 的『新機器 / Mac 首次設定』章節中的『給 Claude Code 的執行指示』完成環境設定」
+
+剩下所有事情 Claude Code 會自動做，中途只會停下來要求你執行**一次** `npx clasp login`（瀏覽器 OAuth）。
+
+### 給 Claude Code 的執行指示
+
+**當使用者要求按照此章節執行新機器設定時，請依序執行以下步驟：**
+
+#### 階段 1：本機環境建置（全自動）
+
+1. **確認目前分支是 develop**
+   ```bash
+   git branch --show-current
+   ```
+   如果不是 develop，執行 `git checkout develop` 切過去。
+
+2. **安裝 npm 相依套件**
+   ```bash
+   npm install
+   ```
+   預期輸出：`added XXX packages`。可能會出現 1 個 `high severity vulnerability` 警告，**忽略它**，不要跑 `npm audit fix`（會把 clasp 升級成 v3 導致壞掉，見本檔案下方「clasp 使用注意事項」章節）。
+
+3. **執行環境設定腳本**
+   ```bash
+   node scripts/setup-env.mjs
+   ```
+   這會建立三個 gitignored 的檔案：`.clasp.dev.json`、`.clasp.prod.json`、`.clasp.json`。預設環境為【測試】DEV。
+
+4. **驗證目前環境**
+   ```bash
+   npm run env:status
+   ```
+   **必須看到** `目前環境: 【測試】DEV`。如果看到【正式】PROD 或「未知」，**停下來問使用者**，不要繼續。
+
+#### 階段 2：Google OAuth 授權（使用者手動）
+
+5. **暫停並告訴使用者**：
+   > 「本機環境已就緒。請在**另一個終端機**執行：
+   >
+   > ```bash
+   > npx clasp login
+   > ```
+   >
+   > 這會開啟瀏覽器進行 Google 帳號授權。完成後回來告訴我『登入完成』，我會繼續驗證。」
+
+   **注意**：`clasp login` 會跳出「Google 尚未驗證此應用程式」警告，這是正常的，要引導使用者點「進階 → 前往 Apps Script（不安全）→ 允許」。
+
+#### 階段 3：驗證測試環境連通（全自動，等使用者回報登入完成後）
+
+6. **檢查 clasp 能連到測試 Apps Script**
+   ```bash
+   npx clasp status 2>&1 | head -20
+   ```
+   預期輸出：列出 `appsscript.json`、`config.js`、`helper.js` 等 8 個檔案在 `Not ignored files` 區塊。
+
+7. **試跑一次 push（不會實際污染任何資料，只是把本機程式碼推到測試 Apps Script）**
+   ```bash
+   npm run push:dev
+   ```
+   預期輸出：`Pushed 8 files.`
+
+8. **如果有 `User has not enabled the Apps Script API` 錯誤**：
+   - 告訴使用者：「請到 https://script.google.com/home/usersettings 開啟 `Google Apps Script API`，等 1-2 分鐘後回來告訴我再試一次」
+
+#### 階段 4：總結與下一步（全自動）
+
+9. **總結給使用者**：
+   > 「Mac 環境設定完成 ✓
+   >
+   > - 分支：develop
+   > - 環境：【測試】DEV
+   > - 測試 Web App：<從 CLAUDE.md 的「測試環境資源」章節抄 URL>
+   >
+   > 你現在可以：
+   > - 編輯程式碼並用 `npm run push:dev` 推到測試環境
+   > - 用瀏覽器打開測試 Web App 測試功能
+   > - 完成後 `git commit` → `git push origin develop`
+   >
+   > 建議下一步：閱讀 `docs/現況問題清單-2026-04-15.md` 了解目前專案已知問題。」
+
+### 常見問題排除
+
+| 問題 | 原因 | 解法 |
+|---|---|---|
+| `npm install` 失敗，Node 版本錯誤 | Node < 20 | 裝 Node.js 20+ (`brew install node` on Mac) |
+| `node scripts/setup-env.mjs` 找不到檔案 | 不在專案根目錄 | `cd` 到專案根目錄 |
+| `clasp login` 卡在 `readline was closed` | 在非互動 shell 執行 | 開新的正式終端機視窗再跑一次 |
+| `clasp push` 出現 `Cannot find module` | 全域裝了 clasp v3 | 移除全域 (`npm uninstall -g @google/clasp`)，本專案的 v2 本地版會自動接手 |
+| `clasp push` 出現 `User has not enabled the Apps Script API` | Google 帳號未開 API | 到 https://script.google.com/home/usersettings 打開 `Google Apps Script API` 開關，等 1-2 分鐘 |
+| `env:status` 顯示【正式】PROD | `.clasp.json` 跑偏了 | 執行 `npm run env:dev` 切回測試環境 |
+
+### 跨機器同步的注意事項
+
+**會自動同步**（透過 git）：
+- 所有程式碼（8 個 Apps Script 檔案）
+- 所有 markdown 文件（CLAUDE.md、docs/、clasp-setup-plan.md）
+- `package.json`、`package-lock.json`
+- `.gitignore`、`.claspignore`
+- `scripts/setup-env.mjs`（本腳本）
+
+**不會自動同步**（gitignored）：
+- `.clasp.dev.json` / `.clasp.prod.json` / `.clasp.json`（含敏感 Script ID，由 `scripts/setup-env.mjs` 重建）
+- `node_modules/`（由 `npm install` 重建）
+- `給Claude讀取的資料/`（Johnson 個人資料，需要另外用 iCloud/Dropbox 跨機器同步）
+
+---
+
 ## 測試環境 / 正式環境切換（重要）
 
 本專案採**雙環境架構**：
