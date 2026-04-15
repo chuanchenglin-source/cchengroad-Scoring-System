@@ -55,13 +55,17 @@ Looker Studio（報表 Dashboard，唯讀）
 ```bash
 npm run env:status   # 查看目前是哪個環境
 npm run env:dev      # 切換到測試環境
-npm run env:prod     # 切換到正式環境（小心）
 npm run push:dev     # 切到測試 + clasp push（日常使用）
-npm run push:prod    # 切到正式 + clasp push（極少使用，原則上不應該）
+npm run pull:dev     # 切到測試 + clasp pull
 ```
 
+**刻意移除的指令**：
+- `env:prod` / `push:prod` / `pull:prod` — 已從 package.json 移除，避免手殘推送到正式環境
+- 如果未來確實需要，告訴 Claude「把 push:prod 加回來」即可
+- `.clasp.prod.json` 檔案本身**仍保留**（含正式 Script ID 作為備份），只是沒有快捷指令
+
 **原則**：
-- 日常只用 `npm run push:dev`，不要碰 `push:prod`
+- 本專案**只能**推送到測試環境
 - 正式環境的部署由**主工程師**合併 PR 後自行處理
 - 每次打開專案建議先 `npm run env:status` 確認當前環境
 

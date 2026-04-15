@@ -5,12 +5,9 @@
   "private": true,
   "scripts": {
     "env:dev": "node -e \"require('fs').copyFileSync('.clasp.dev.json','.clasp.json'); console.log('✓ 已切換到【測試】環境')\"",
-    "env:prod": "node -e \"require('fs').copyFileSync('.clasp.prod.json','.clasp.json'); console.log('⚠️  已切換到【正式】環境 — 小心操作！')\"",
     "env:status": "node -e \"const id=JSON.parse(require('fs').readFileSync('.clasp.json')).scriptId; const dev='1xR7aWeaeAzUjzoQMO1m6cWkkJrCW85-2IlU0_NHU-IPReOX4mtg0ttxY'; const prod='19ZCMtO64t7drgu-MVY-kbCJpOcW8kvpjDjsu0mfBFszyjRmP6ghqc8NV'; console.log('目前環境:', id===dev?'【測試】DEV':id===prod?'【正式】PROD ⚠️':'未知 '+id)\"",
     "push:dev": "npm run env:dev && clasp push",
-    "push:prod": "npm run env:prod && clasp push",
-    "pull:dev": "npm run env:dev && clasp pull",
-    "pull:prod": "npm run env:prod && clasp pull"
+    "pull:dev": "npm run env:dev && clasp pull"
   },
   "keywords": [],
   "author": "",
