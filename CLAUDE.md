@@ -1,3 +1,31 @@
+<!-- SPECTRA:START v1.0.1 -->
+
+# Spectra Instructions
+
+This project uses Spectra for Spec-Driven Development(SDD). Specs live in `openspec/specs/`, change proposals in `openspec/changes/`.
+
+## Use `/spectra:*` skills when:
+
+- A discussion needs structure before coding → `/spectra:discuss`
+- User wants to plan, propose, or design a change → `/spectra:propose`
+- Tasks are ready to implement → `/spectra:apply`
+- There's an in-progress change to continue → `/spectra:ingest`
+- User asks about specs or how something works → `/spectra:ask`
+- Implementation is done → `/spectra:archive`
+
+## Workflow
+
+discuss? → propose → apply ⇄ ingest → archive
+
+- `discuss` is optional — skip if requirements are clear
+- Requirements change mid-work? Plan mode → `ingest` → resume `apply`
+
+## Parked Changes
+
+Changes can be parked（暫存）— temporarily moved out of `openspec/changes/`. Parked changes won't appear in `spectra list` but can be found with `spectra list --parked`. To restore: `spectra unpark <name>`. The `/spectra:apply` and `/spectra:ingest` skills handle parked changes automatically.
+
+<!-- SPECTRA:END -->
+
 # 專案背景
 
 這是一個為期 8 週的活動積分管理系統「**心成親證班回報系統**」，目前由臨時團隊遠端協作開發。我（Johnson）是中途加入的開發協作者，非主導者，透過 Claude Code 協助撰寫程式碼。
@@ -15,7 +43,7 @@
 
 | 項目 | 連結 / ID |
 |---|---|
-| 測試 Google Sheets | `12H5V6FKByPzXwqOlE1KrDHMdxDI3tLRZ9b5U9alJtvE` |
+| 測試 Google Sheets | `1JgDikkNEV0CKuiJNic4stTy57G-ltTzDCbzXFr5E1Ao` |
 | 測試 Apps Script | `1xR7aWeaeAzUjzoQMO1m6cWkkJrCW85-2IlU0_NHU-IPReOX4mtg0ttxY` |
 | 測試 Web App URL | https://script.google.com/macros/s/AKfycbzRgBYH6RsnPs8j7m5k2vr4DT7I_UU_qA3e2SfGrMr8iX705EUwJiRsOsHLJpqvAbg/exec |
 
@@ -443,8 +471,8 @@ const SS_ID_SCORE = PROPS.getProperty('SS_ID_SCORE') || '1CFTaH...';
 
 **測試環境的 Script Properties 設定**（在測試 Apps Script 左側「專案設定 ⚙️ → 指令碼屬性」）：
 ```
-SS_ID_MEMBER = 12H5V6FKByPzXwqOlE1KrDHMdxDI3tLRZ9b5U9alJtvE
-SS_ID_SCORE  = 12H5V6FKByPzXwqOlE1KrDHMdxDI3tLRZ9b5U9alJtvE
+SS_ID_MEMBER = 1JgDikkNEV0CKuiJNic4stTy57G-ltTzDCbzXFr5E1Ao
+SS_ID_SCORE  = 1JgDikkNEV0CKuiJNic4stTy57G-ltTzDCbzXFr5E1Ao
 ```
 
 ---
