@@ -44,8 +44,8 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 | 項目 | 連結 / ID |
 |---|---|
 | 測試 Google Sheets | `1JgDikkNEV0CKuiJNic4stTy57G-ltTzDCbzXFr5E1Ao` |
-| 測試 Apps Script | `1xR7aWeaeAzUjzoQMO1m6cWkkJrCW85-2IlU0_NHU-IPReOX4mtg0ttxY` |
-| 測試 Web App URL | https://script.google.com/macros/s/AKfycbzRgBYH6RsnPs8j7m5k2vr4DT7I_UU_qA3e2SfGrMr8iX705EUwJiRsOsHLJpqvAbg/exec |
+| 測試 Apps Script | `1qridiVIggaHyYUizQRWegCpLjQMowdaETY1_AiDRhUKkuohrS4KOVtte` |
+| 測試 Web App URL | https://script.google.com/macros/s/AKfycbxmDqrEKYEM-HxpNtHa8nuvkePFe8GUBtj42l2YbRYV7cdTf8iv0l_Hk9Ud3TiKfafd/exec |
 
 **正式環境資源**（僅供 Claude 參考，Johnson 不應直接操作）：
 | 項目 | ID |
