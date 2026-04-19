@@ -18,6 +18,11 @@ desktop.ini
 .vscode/
 .idea/
 
+# ==== Claude Code 工作檔 ====
+.claude/
+
 # ==== Log ====
 *.log
 npm-debug.log*
+.spectra/
+openspec/.vector-search.db*
