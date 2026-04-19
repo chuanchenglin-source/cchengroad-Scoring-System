@@ -18,8 +18,9 @@ desktop.ini
 .vscode/
 .idea/
 
-# ==== Claude Code 工作檔 ====
-.claude/
+# ==== Claude Code 工作檔（排除 skills 以外的內容）====
+.claude/*
+!.claude/skills/
 
 # ==== Log ====
 *.log
