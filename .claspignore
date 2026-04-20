@@ -1,7 +1,7 @@
 # 預設：所有檔案都不推送到正式 Apps Script
 **/**
 
-# 例外：只允許以下 8 個 Apps Script 檔案推送
+# 例外：只允許以下 Apps Script 檔案推送
 !appsscript.json
 !config.js
 !helper.js
@@ -10,3 +10,4 @@
 !Index.html
 !main.html
 !history.html
+!supabase-client.html
