@@ -3,27 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ONE PIECE-海洋親證班計分系統</title>
+    <title>海洋親證班-人生寶藏航線</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <?!= include('supabase-client') ?>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { 
-            font-family: 'Noto Sans TC', sans-serif; 
-            background: radial-gradient(circle at top left, #eef2ff 0%, #f8fafc 100%); 
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: radial-gradient(circle at top left, #eef2ff 0%, #f8fafc 100%);
         }
-        .card { 
-            background: rgba(255, 255, 255, 0.95); 
+        .card {
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border-radius: 2rem; 
-            box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12); 
-            width: 100%; 
-            max-width: 440px; 
-            padding: 3rem 2.5rem; 
+            border-radius: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12);
+            width: 100%;
+            max-width: 440px;
+            padding: 3rem 2.5rem;
             border: 1px solid rgba(255, 255, 255, 0.5);
         }
         .info-label { font-size: 0.75rem; color: #6366f1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
         .info-value { font-weight: 700; color: #1e1b4b; font-size: 1.1rem; }
-        
+
         .custom-input {
             border: 2px solid #e2e8f0;
             border-radius: 1rem;
@@ -35,20 +38,37 @@
             transform: translateY(-1px);
         }
 
-        .spinner { 
-            border: 3px solid rgba(255, 255, 255, 0.3); 
-            border-top: 3px solid #ffffff; 
-            border-radius: 50%; 
-            width: 1.25rem; 
-            height: 1.25rem; 
-            animation: spin 0.8s linear infinite; 
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #ffffff;
+            border-radius: 50%;
+            width: 1.25rem;
+            height: 1.25rem;
+            animation: spin 0.8s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
+
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: scale(0.95) translateY(10px); } 
-            to { opacity: 1; transform: scale(1) translateY(0); } 
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .pin-input {
+            letter-spacing: 1em;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding-left: 1.25em;
+        }
+        .error-msg {
+            color: #dc2626;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -61,18 +81,20 @@
                 </svg>
             </div>
             <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">人生寶藏入口</h1>
-            <p class="text-sm text-slate-500 mt-3 font-medium">系統將同步紀錄您的登入身份</p>
+            <p class="text-sm text-slate-500 mt-3 font-medium">寶藏庫將同步紀錄您的登入身份</p>
         </div>
 
-        <form id="mainForm" class="space-y-8">
+        <form id="mainForm" class="space-y-6">
+            <!-- 姓名搜尋 -->
             <div>
-                <label class="block text-sm font-bold text-slate-700 mb-3 ml-1">搜尋姓名或編號</label>
+                <label class="block text-sm font-bold text-slate-700 mb-3 ml-1">搜尋姓名或小隊編號</label>
                 <div class="relative group">
-                    <input type="text" id="searchInput" list="nameList" class="custom-input w-full px-5 py-4 outline-none text-slate-800 placeholder-slate-400" placeholder="正在讀取資料庫..." autocomplete="off" disabled>
+                    <input type="text" id="searchInput" list="nameList" class="custom-input w-full px-5 py-4 outline-none text-slate-800 placeholder-slate-400" placeholder="正在讀取寶藏庫..." autocomplete="off" disabled>
                     <datalist id="nameList"></datalist>
                 </div>
             </div>
 
+            <!-- 成員資訊卡 -->
             <div id="infoBox" class="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 hidden fade-in space-y-4">
                 <div class="flex justify-between items-center">
                     <span class="info-label">隊編 / 隊伍</span>
@@ -85,13 +107,34 @@
                 </div>
                 <div class="w-full h-px bg-indigo-100"></div>
                 <div class="flex justify-between items-center">
-                    <span class="info-label">大隊家長</span>
+                    <span class="info-label">小隊名</span>
+                    <span id="txtGroup" class="info-value text-indigo-900">-</span>
+                </div>
+                <div class="w-full h-px bg-indigo-100"></div>
+                <div class="flex justify-between items-center">
+                    <span class="info-label">小隊長</span>
+                    <span id="txtLeader" class="info-value text-indigo-900">-</span>
+                </div>
+                <div class="w-full h-px bg-indigo-100"></div>
+                <div class="flex justify-between items-center">
+                    <span class="info-label">大隊長</span>
                     <span id="txtMentor" class="info-value text-indigo-600">-</span>
                 </div>
             </div>
 
+            <!-- PIN 輸入（選到人後才顯示）-->
+            <div id="pinBox" class="hidden fade-in">
+                <label class="block text-sm font-bold text-slate-700 mb-3 ml-1">請輸入 4 位數 PIN 碼</label>
+                <input type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" id="pinInput" class="custom-input pin-input w-full py-4 outline-none text-slate-800" placeholder="••••" autocomplete="off">
+                <p class="text-xs text-slate-400 mt-2 ml-1">預設 PIN：<span class="font-mono font-bold">0000</span>（首次登入請聯繫小隊長）</p>
+            </div>
+
+            <!-- 錯誤訊息 -->
+            <div id="errorMsg" class="error-msg hidden"></div>
+
+            <!-- 登入按鈕 -->
             <button type="submit" id="submitBtn" class="group relative w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-xl shadow-indigo-100 transition-all duration-300 flex items-center justify-center gap-3 overflow-hidden" disabled>
-                <span class="relative z-10">確認身份並進入表單</span>
+                <span class="relative z-10">填寫新個人記錄</span>
             </button>
 
             <button type="button" id="viewBtn" class="group relative w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 shadow-xl shadow-indigo-100 transition-all duration-300 flex items-center justify-center gap-3 overflow-hidden" disabled>
@@ -105,159 +148,157 @@
         let selectedMember = null;
 
         const searchInput = document.getElementById('searchInput');
-        const nameList = document.getElementById('nameList');
-        const infoBox = document.getElementById('infoBox');
-        const submitBtn = document.getElementById('submitBtn');
-        const viewBtn = document.getElementById('viewBtn');
+        const pinInput    = document.getElementById('pinInput');
+        const nameList    = document.getElementById('nameList');
+        const infoBox     = document.getElementById('infoBox');
+        const pinBox      = document.getElementById('pinBox');
+        const errorMsg    = document.getElementById('errorMsg');
+        const submitBtn   = document.getElementById('submitBtn');
+        const viewBtn     = document.getElementById('viewBtn');
 
-        // call getMemberList() from code.js to populate the datalist
-        window.onload = function() {
-            if (typeof google !== 'undefined') {
-                google.script.run
-                    .withSuccessHandler(function(data) {
-                        allMembers = data;
-                        nameList.innerHTML = "";
-                        data.forEach(m => {
-                            const opt = document.createElement('option');
-                            opt.value = m.id;
-                            opt.textContent = `${m.name} (${m.team})`;
-                            nameList.appendChild(opt);
-                        });
-                        searchInput.placeholder = "輸入姓名或編號...";
-                        searchInput.disabled = false;
-                    })
-                    .getMemberList();
+        // 載入名單
+        window.onload = async function() {
+            try {
+                allMembers = await window.scoringAPI.getMemberList();
+                nameList.innerHTML = "";
+                allMembers.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.member_code;
+                    opt.textContent = `${m.name} (${m.team_name || m.team_code || ''})`;
+                    nameList.appendChild(opt);
+                });
+                searchInput.placeholder = "輸入姓名或小隊編號...";
+                searchInput.disabled = false;
+            } catch (err) {
+                console.error('載入名單失敗', err);
+                searchInput.placeholder = "載入失敗，請重新整理頁面";
             }
         };
 
+        // 搜尋輸入監聽
         searchInput.addEventListener('input', function() {
             const val = this.value.trim();
-            selectedMember = allMembers.find(m => m.id === val || m.name === val);
-            if (!val) {
-                hideInfo();
-                return;
-            }
+            hideError();
+            if (!val) { hideInfo(); return; }
 
-            selectedMember = allMembers.find(m => 
-                m.id === val || 
-                m.name === val || 
-                `${m.id}_${m.name}` === val
+            selectedMember = allMembers.find(m =>
+                m.member_code === val ||
+                m.name === val ||
+                `${m.name} (${m.team_name || m.team_code || ''})` === val
             );
 
-            // if (selectedMember) {
-            //     document.getElementById('txtTeam').textContent = `${selectedMember.teamCode} / ${selectedMember.team}`;
-            //     document.getElementById('txtName').textContent = selectedMember.name;
-            //     document.getElementById('txtMentor').textContent = selectedMember.mentor;
-            //     infoBox.classList.remove('hidden');
-            //     submitBtn.disabled = false;
-            // } else {
-            //     infoBox.classList.add('hidden');
-            //     submitBtn.disabled = true;
-            // }
-
             if (selectedMember) {
-                const correctFormat = `${selectedMember.id}_${selectedMember.name}`;
-                if (this.value !== correctFormat) this.value = correctFormat;
+                if (this.value !== selectedMember.member_code) {
+                    this.value = selectedMember.member_code;
+                }
                 showInfo(selectedMember);
             } else {
                 hideInfo();
             }
+        });
 
+        // PIN 輸入變化 → 啟用/停用按鈕
+        pinInput.addEventListener('input', function() {
+            hideError();
+            updateButtonState();
         });
 
         function showInfo(member) {
-            document.getElementById('txtTeam').textContent = `${member.teamCode} / ${member.team}`;
-            document.getElementById('txtName').textContent = member.name;
-            document.getElementById('txtMentor').textContent = member.mentor;
+            document.getElementById('txtTeam').textContent   = `${member.team_code || '-'} / ${member.team_name || '-'}`;
+            document.getElementById('txtName').textContent   = member.name || '-';
+            document.getElementById('txtGroup').textContent  = member.squad_code || member.squad_name || '-';
+            document.getElementById('txtLeader').textContent = member.squad_leader_name || '-';
+            document.getElementById('txtMentor').textContent = member.team_leader_name || member.mentor || '-';
             infoBox.classList.remove('hidden');
-            
-            // 同步啟用兩個按鈕
-            submitBtn.disabled = false;
-            viewBtn.disabled = false;
-
+            pinBox.classList.remove('hidden');
+            updateButtonState();
         }
 
         function hideInfo() {
             infoBox.classList.add('hidden');
-            
-            // 同步禁用兩個按鈕
+            pinBox.classList.add('hidden');
             submitBtn.disabled = true;
             viewBtn.disabled = true;
-
             selectedMember = null;
         }
 
-        document.getElementById('mainForm').addEventListener('submit', function(e) {
+        function updateButtonState() {
+            const pinOK = pinInput.value.trim().length === 4;
+            const hasMember = !!selectedMember;
+            submitBtn.disabled = !(pinOK && hasMember);
+            viewBtn.disabled   = !(pinOK && hasMember);
+        }
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.remove('hidden');
+        }
+        function hideError() { errorMsg.classList.add('hidden'); }
+
+        // 登入：驗證 PIN → 跳填分頁
+        document.getElementById('mainForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             if (!selectedMember) return;
 
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<div class="spinner"></div> <span>開啟航道中...</span>';
             viewBtn.disabled = true;
+            hideError();
 
-            // // call getScriptUrl() to get the URL of the form page, then redirect with query parameters
-            // google.script.run.withSuccessHandler(function(url) {
-            //     const params = [
-            //         `page=main`,
-            //         `id=${encodeURIComponent(selectedMember.id)}`,
-            //         `name=${encodeURIComponent(selectedMember.name)}`,
-            //         `team=${encodeURIComponent(selectedMember.team)}`,
-            //         `teamCode=${encodeURIComponent(selectedMember.teamCode)}`
-            //     ].join('&');
-            //     window.top.location.href = url + "?" + params;
-            // }).getScriptUrl();
+            const user = await window.scoringAPI.authenticate(selectedMember.name, pinInput.value.trim());
 
-            if (typeof google !== 'undefined') {
-                google.script.run.withSuccessHandler(function(url) {
-                    const params = [
-                        `page=main`,
-                        `id=${encodeURIComponent(selectedMember.id)}`,
-                        `name=${encodeURIComponent(selectedMember.name)}`,
-                        `team=${encodeURIComponent(selectedMember.team)}`,
-                        `teamCode=${encodeURIComponent(selectedMember.teamCode)}`
-                    ].join('&');
-                    window.top.location.href = url + "?" + params;
-                }).getScriptUrl();
-            } else {
-                setTimeout(() => {
-                    alert("進入 Main 頁面參數：\n" + JSON.stringify(selectedMember, null, 2));
-                    submitBtn.disabled = false;
-                    viewBtn.disabled = false;
-                    submitBtn.innerHTML = '<span class="relative z-10">確認身份並進入表單</span>';
-                }, 800);
+            if (!user) {
+                showError('❌ PIN 錯誤，請再試一次');
+                submitBtn.disabled = false;
+                viewBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="relative z-10">填寫新個人記錄</span>';
+                return;
             }
 
+            navigateTo('main', user);
         });
 
-        viewBtn.addEventListener('click', function() {
+        // 查歷史紀錄按鈕
+        viewBtn.addEventListener('click', async function() {
             if (this.disabled || !selectedMember) return;
-            
+            const originalHTML = this.innerHTML;
             this.disabled = true;
             submitBtn.disabled = true;
-            this.innerHTML = '<div class="spinner !border-indigo-600 !border-t-transparent"></div> <span>讀取紀錄中...</span>';
+            this.innerHTML = '<div class="spinner"></div> <span>讀取紀錄中...</span>';
+            hideError();
 
-            if (typeof google !== 'undefined') {
+            const user = await window.scoringAPI.authenticate(selectedMember.name, pinInput.value.trim());
+
+            if (!user) {
+                showError('❌ PIN 錯誤，請再試一次');
+                this.disabled = false;
+                submitBtn.disabled = false;
+                this.innerHTML = originalHTML;
+                return;
+            }
+
+            navigateTo('history', user);
+        });
+
+        // 通用跳轉（帶 URL 參數）
+        function navigateTo(page, user) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run.withSuccessHandler(function(url) {
                     const params = [
-                        `page=history`, // 指定跳轉到 History 頁面
-                        `id=${encodeURIComponent(selectedMember.id)}`,
-                        `name=${encodeURIComponent(selectedMember.name)}`,
-                        `team=${encodeURIComponent(selectedMember.team)}`,
-                        `teamCode=${encodeURIComponent(selectedMember.teamCode)}`
+                        `page=${page}`,
+                        `memberId=${encodeURIComponent(user.id)}`,
+                        `id=${encodeURIComponent(user.member_code)}`,
+                        `name=${encodeURIComponent(user.name)}`,
+                        `team=${encodeURIComponent(user.team_name || '')}`,
+                        `teamCode=${encodeURIComponent(user.team_code || '')}`
                     ].join('&');
                     window.top.location.href = url + "?" + params;
                 }).getScriptUrl();
             } else {
-                setTimeout(() => {
-                    alert("模擬跳轉到 History 頁面\n參數：" + JSON.stringify(selectedMember, null, 2));
-                    this.disabled = false;
-                    submitBtn.disabled = false;
-                    this.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>查看歷史計分紀錄</span>';
-                }, 800);
+                console.log('[navigateTo]', page, user);
+                alert(`模擬跳轉 → ${page}\n` + JSON.stringify(user, null, 2));
             }
-        });
-
-
+        }
     </script>
 </body>
 </html>

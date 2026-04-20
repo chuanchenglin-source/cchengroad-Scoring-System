@@ -2,9 +2,15 @@
 .clasp.json
 .clasp.*.json
 .clasprc.json
+.env
+.env.local
+.env.*.local
 
 # ==== Johnson 個人參考資料 ====
 給Claude讀取的資料/
+
+# ==== Supabase 匯入 SQL（含個資，不進 git）====
+scripts/supabase-import/02-import-members.sql
 
 # ==== 相依套件 ====
 node_modules/

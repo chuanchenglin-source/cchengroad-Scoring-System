@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>歷史填單紀錄 - ONE PIECE親證</title>
+    <title>歷史填單紀錄-海洋親證班</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <?!= include('supabase-client') ?>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
         
@@ -43,6 +46,27 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
         }
+        /* 左右滑軌 */
+.scroll-container::before,
+.scroll-container::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.scroll-container::before {
+    left: 0;
+    background: linear-gradient(to right, #064e3b, transparent);
+}
+
+.scroll-container::after {
+    right: 0;
+    background: linear-gradient(to left, #064e3b, transparent);
+}
 
         /* 歷史內容卡片 */
         .history-card { 
@@ -64,26 +88,27 @@
             font-size: 1.25rem;
         }
 
-        /* 一般框框標籤樣式 - 加大加粗 */
+													 
         .box-label {
             background: #ffffff;
             border: 2px solid #facc15;
             color: #047857;
-            padding: 4px 12px;
+            padding: 4px 14px;
             border-radius: 8px;
             margin-right: 14px;
             font-size: 0.9rem;
             font-weight: 800;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.1em;
+            white-space: nowrap;
         }
 
-        /* 表格樣式 - 字體加大且間距放寬 */
+														
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table th { background: #f8fafc; color: #475569; font-weight: 700; text-align: left; padding: 16px 20px; border-bottom: 2px solid #e2e8f0; font-size: 1rem; }
         .data-table td { padding: 18px 20px; border-bottom: 1px solid #f1f5f9; vertical-align: top; font-size: 1.1rem; line-height: 1.6; }
         .data-table tr:last-child td { border-bottom: none; }
         
-        /* 得分標籤放大 */
+								
         .score-badge {
             display: inline-block;
             padding: 4px 12px;
@@ -94,11 +119,7 @@
             text-align: center;
         }
         .score-has { background: #fef08a; color: #854d0e; border: 2px solid #eab308; }
-        .score-none { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
-
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-
-        /* 總分區域強調 */
+        .score-none { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }			
         #grandTotal { font-size: 2.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     </style>
 </head>
@@ -117,8 +138,8 @@
         <div class="max-w-4xl mx-auto">
             <div class="flex justify-between items-center mb-6">
                 <div>
-                    <h1 class="text-2xl font-black text-emerald-400 tracking-tight">ONE PIECE 填單歷史</h1>
-                    <p class="text-emerald-100 text-lg mt-1 font-medium">夥伴：<span class="font-bold text-white border-b-2 border-yellow-400"><?= user.name ?></span></p>
+                    <h1 class="text-2xl font-black text-emerald-400 tracking-tight">親證班 填單歷史</h1>
+                    <p class="text-emerald-100 text-lg mt-1 font-medium">夥伴：<span class="font-bold text-white border-b-2 border-yellow-400" id="userNameDisplay">航海士</span></p>
                 </div>
                 <div class="bg-emerald-800/50 backdrop-blur-md rounded-2xl px-6 py-4 text-center border-2 border-emerald-600/50 shadow-inner">
                     <span class="text-xs text-emerald-200 block uppercase tracking-widest font-black mb-1">全期累計總分</span>
@@ -126,9 +147,11 @@
                 </div>
             </div>
             
-            <!-- 週數選取器 -->
-            <div class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide" id="weekPicker">
-                <!-- JS 動態生成 -->
+             <!-- 週數選取器容器 -->
+            <div class="scroll-container">
+                <div class="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide" id="weekPicker">
+                    <!-- JS 動態生成 -->
+                </div>
             </div>
         </div>
     </header>
@@ -141,20 +164,29 @@
             <div class="text-3xl font-black text-emerald-700 underline decoration-yellow-400 decoration-4 underline-offset-8" id="currentDateRange">5/03 - 5/09</div>
         </div>
 
-        <!-- 14個 BOX 的容器 -->
+									
         <div id="boxesContainer" class="space-y-10">
-            <!-- 由 JS 動態生成 Box 卡片 -->
+            <!-- 由 JS 動態生成卡片 -->
         </div>
     </main>
 
     <script>
         const campaignConfig = {
             startDate: "2026-05-03",
-            user: { id: "<?= user.id ?>", name: "<?= user.name ?>" },
+            user: {
+                memberId: "<?= user.memberId ?>",   // Supabase members.id
+                id:       typeof google !== 'undefined' ? "<?= user.id ?>" : "guest_001",
+                name:     typeof google !== 'undefined' ? "<?= user.name ?>" : "航海英雄"
+            },
             boxTitles: [
-                "每日打拳定課", "每日調頻定課", "分享親證心得", "參加心成實體活動",
-                "大超越巔峰", "愛護地球尊重生命", "報名生生世世系列", "報名社團聯誼會",
-                "報名高階課程", "報名五運班", "傳愛", "全勤獎", "報名超級頻率", "其他備註說明"
+                "主修打拳", "選修定課", "W2天使通話心得", "電影行動方案",
+                "W3親證分享文", "W3心得回饋反思", "W3天使通話", "W4天使通話心得",
+                "W4接地體驗", "W4心得回饋反思", "W4定課回顧分享文", "W5天使通話心得", 
+                "W5心得回饋反思", "W5持續力親證", "W6天使通話", "W6穿越黑暗", 
+                "W7天使通話","W7三道菜","W7破冰加碼","W8天使通話心得","聯誼會會籍",
+                "高階課程","傳愛完款","傳愛訂金","進階課程","加分題1","加分題2",
+                "加分題3","加分題4","加分題5","加分題6","加分題7","加分題8",
+                "加分題9","加分題10","加分題11","加分題12","加分題13","加分題14","加分題15",
             ]
         };
 
@@ -162,9 +194,24 @@
         let currentWeek = 1;
 
         window.onload = function() {
+            document.getElementById('userNameDisplay').innerText = campaignConfig.user.name;
             initWeekPicker();
+            setupScrollIndicator();
             fetchHistory();
         };
+
+        function setupScrollIndicator() {
+            const picker = document.getElementById('weekPicker');
+            const bar = document.getElementById('scrollIndicatorBar');
+            if (!picker || !bar) return;
+
+            picker.addEventListener('scroll', () => {
+                const scrollPercentage = (picker.scrollLeft / (picker.scrollWidth - picker.clientWidth)) * 100;
+                // 限制滑塊移動範圍在 0% 到 70% (因為寬度是 30%)
+                const moveRange = (scrollPercentage / 100) * 70;
+                bar.style.transform = `translateX(${moveRange / 0.7}%)`;
+            });
+        }
 
         function initWeekPicker() {
             const picker = document.getElementById('weekPicker');
@@ -207,38 +254,52 @@
             document.getElementById('currentDateRange').innerText = rangeStr;
             
             renderBoxes();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // 自動將選中的週數滾動到視線中央
+            const btn = document.getElementById(`week-${w}`);
+            const picker = document.getElementById('weekPicker');
+            const offset = btn.offsetLeft - (picker.clientWidth / 2) + (btn.clientWidth / 2);
+            picker.scrollTo({ left: offset, behavior: 'smooth' });
         }
 
-        function fetchHistory() {
+        async function fetchHistory() {
             document.getElementById('loadingOverlay').classList.remove('hidden');
-            
-            if (typeof google !== 'undefined') {
-                google.script.run
-                    .withSuccessHandler(data => {
-                        allHistoryData = data || [];
-                        document.getElementById('loadingOverlay').classList.add('hidden');
-                        calculateSummary();
-                        renderBoxes();
-                    })
-                    .withFailureHandler(err => {
-                        alert("連線失敗：" + err);
-                        document.getElementById('loadingOverlay').classList.add('hidden');
-                    })
-                    .getPersonalHistory(campaignConfig.user.id);
-            } else {
-                setTimeout(() => {
+            try {
+                const memberId = parseInt(campaignConfig.user.memberId);
+                if (!memberId) {
+                    // 本機模擬（未登入）
                     allHistoryData = generateMockData();
-                    document.getElementById('loadingOverlay').classList.add('hidden');
-                    calculateSummary();
-                    renderBoxes();
-                }, 800);
+                } else {
+                    const rows = await window.scoringAPI.getPersonalHistory(memberId);
+                    // 將 Supabase 回傳的 {report_date, total_score, box_data} 扁平化成舊格式
+                    allHistoryData = rows.map(r => {
+                        const flat = {
+                            date:  r.report_date,
+                            score: r.total_score || 0,
+                            remark: r.remarks || ''
+                        };
+                        const boxes = r.box_data || {};
+                        for (let b = 1; b <= 40; b++) {
+                            const box = boxes[`box${b}`] || {};
+                            flat[`box${b}_score`]   = box.score   || 0;
+                            flat[`box${b}_content`] = box.content || '';
+                        }
+                        return flat;
+                    });
+                }
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                calculateSummary();
+                renderBoxes();
+            } catch (err) {
+                console.error('fetchHistory 失敗', err);
+                document.getElementById('loadingOverlay').classList.add('hidden');
             }
         }
 
         function calculateSummary() {
             let total = 0;
             const weekScores = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0};
+															 
             
             allHistoryData.forEach(row => {
                 const score = parseFloat(row.score) || 0;
@@ -270,19 +331,22 @@
             const start = new Date(campaignConfig.startDate);
             start.setDate(start.getDate() + (currentWeek - 1) * 7);
             
+								 
             for (let i = 0; i < 7; i++) {
                 const d = new Date(start);
                 d.setDate(start.getDate() + i);
                 weekDates.push(d.toISOString().split('T')[0]);
             }
 
-            for (let b = 1; b <= 14; b++) {
+            for (let b = 1; b <= 40; b++) {
                 const card = document.createElement('div');
                 card.className = "history-card";
                 
                 let headerHTML = `
+
+								  
                     <div class="card-header">
-                        <span class="box-label">BOX</span>
+                        <span class="box-label">回顧</span>
                         <span>${campaignConfig.boxTitles[b-1]}</span>
                     </div>
                 `;
@@ -300,7 +364,7 @@
                 
                 weekDates.forEach(dateStr => {
                     const record = allHistoryData.find(r => r.date === dateStr);
-                    // 串接對應的欄位名：boxN_score 與 boxN_content
+																			 
                     const score = record ? (parseFloat(record[`box${b}_score`]) || 0) : 0;
                     const content = record ? (record[`box${b}_content`] || "") : "";
                     
@@ -325,22 +389,26 @@
         function generateMockData() {
             const mock = [];
             const start = new Date(campaignConfig.startDate);
-            for(let i=0; i<30; i++) {
+            for(let i=0; i<49; i++) {
                 const d = new Date(start);
                 d.setDate(start.getDate() + i);
                 const ds = d.toISOString().split('T')[0];
                 
-                // 模擬 14 個 BOX 的欄位
+											  
                 let dayRecord = {
                     date: ds,
-                    score: 60
+                    score: 0
                 };
                 
-                for(let b=1; b<=14; b++) {
-                    dayRecord[`box${b}_score`] = b <= 3 ? (b * 10) : 0;
-                    dayRecord[`box${b}_content`] = b <= 3 ? `這是第 ${b} 項的示範內容文字` : "";
+                let dayTotal = 0;
+                for(let b=1; b<=40; b++) {
+                    const hasData = Math.random() > 0.7;
+                    const scoreVal = hasData ? (Math.floor(Math.random() * 2) + 1) * 10 : 0;
+                    dayRecord[`box${b}_score`] = scoreVal;
+                    dayRecord[`box${b}_content`] = hasData ? `夥伴於 ${ds} 針對「${campaignConfig.boxTitles[b-1]}」的心得回饋內容示範。` : "";
+                    dayTotal += scoreVal;
                 }
-                
+                dayRecord.score = dayTotal;
                 mock.push(dayRecord);
             }
             return mock;

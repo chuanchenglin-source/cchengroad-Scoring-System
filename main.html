@@ -3,118 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分數登記 - ONE PIECE親證</title>
+    <title>分數登記-海洋親證班</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <?!= include('supabase-client') ?>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
-        
-        body { 
-            background-color: #f3f4f6; 
-            font-family: 'Noto Sans TC', "Microsoft JhengHei", sans-serif; 
+
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Noto Sans TC', "Microsoft JhengHei", sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
-        .box-card { 
-            background: white; 
-            border-radius: 16px; 
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
-            margin-bottom: 1.5rem; 
-            padding: 1.5rem; 
-            border-left: 5px solid #4f46e5; 
+        .box-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            border-left: 5px solid #4f46e5;
             transition: transform 0.2s;
         }
-        
-        .box-title { 
-            font-size: 1.15rem; 
-            font-weight: 800; 
-            color: #1e1b4b; 
-            margin-bottom: 0.75rem; 
-            display: flex; 
-            align-items: center; 
+
+        .box-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #1e1b4b;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
         }
 
-        .box-number { 
-            background: #4f46e5; 
-            color: white; 
-            border-radius: 50%; 
-            width: 26px; 
-            height: 26px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 0.85rem; 
-            margin-right: 12px; 
+        .box-number {
+            background: #4f46e5;
+            color: white;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            margin-right: 12px;
             flex-shrink: 0;
             font-weight: 900;
         }
 
-        .checkbox-group label { 
-            display: flex; 
-            align-items: center; 
-            padding: 0.6rem; 
-            border-radius: 10px; 
-            transition: all 0.2s; 
-            cursor: pointer; 
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            padding: 0.6rem;
+            border-radius: 10px;
+            transition: all 0.2s;
+            cursor: pointer;
             border: 1px solid transparent;
         }
-        
-        .checkbox-group label:hover { 
-            background: #f5f3ff; 
+
+        .checkbox-group label:hover {
+            background: #f5f3ff;
             border-color: #ddd6fe;
         }
 
-        input[type="checkbox"], input[type="radio"] { 
-            width: 1.3rem; 
-            height: 1.3rem; 
-            margin-right: 12px; 
+        input[type="checkbox"], input[type="radio"] {
+            width: 1.3rem;
+            height: 1.3rem;
+            margin-right: 12px;
             cursor: pointer;
             accent-color: #4f46e5;
         }
 
         .note { font-size: 0.85rem; color: #6b7280; margin-top: 0.25rem; line-height: 1.4; }
-        
-        .submit-btn { 
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); 
-            transition: all 0.3s; 
+
+        .submit-btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            transition: all 0.3s;
             box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);
         }
-        
+
         .submit-btn:active { transform: scale(0.97); }
         .submit-btn:disabled { background: #cbd5e1; box-shadow: none; cursor: not-allowed; }
 
-        #loadingOverlay { 
-            display: none; 
-            position: fixed; 
-            inset: 0; 
-            background: rgba(15, 23, 42, 0.7); 
-            z-index: 100; 
-            align-items: center; 
-            justify-content: center; 
-            color: white; 
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            color: white;
             backdrop-filter: blur(4px);
         }
-        
+
         /* 日期選擇器樣式 */
-        .date-btn { 
-            padding: 10px; 
-            border-radius: 12px; 
-            text-align: center; 
-            cursor: pointer; 
-            border: 2px solid transparent; 
-            transition: all 0.2s; 
-            min-width: 65px; 
+        .date-btn {
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            min-width: 65px;
             background: rgba(255, 255, 255, 0.1);
         }
-        .date-btn.active { 
-            border-color: #facc15; 
-            background-color: #ffffff; 
+        .date-btn.active {
+            border-color: #facc15;
+            background-color: #ffffff;
             color: #4338ca;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         .date-btn.completed { background-color: #10b981; color: white; }
         .date-btn.pending { color: #e0e7ff; }
-        
+
         .scrollbar-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -141,7 +144,7 @@
                     <span class="text-3xl font-black text-yellow-400" id="totalScoreDisplay">0</span>
                 </div>
             </div>
-            
+
             <!-- 日期捲軸 -->
             <div class="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide" id="datePicker">
                 <!-- 由 JS 動態生成日期 -->
@@ -157,158 +160,419 @@
         </div>
 
        <form id="mainForm" oninput="calculateTotal()">
-            
-            <!-- 1BOX 打拳 -->
+
+            <!-- 1BOX 主修打拳 -->
             <section class="box-card" data-box="1">
-                <div class="box-title"><span class="box-number">1</span>每日打拳定課</div>
+               <div class="box-title flex items-center gap-2">
+                 <!-- 主修標籤（改為橫式膠囊） -->
+                 <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">主修</span> <span>每日打拳定課</span></div>
                 <p class="note">任選一項即得 10 分，每日上限 10 分</p>
                 <div class="checkbox-group mt-3 space-y-1">
-                    <label><input type="checkbox" name="box1" value="10"> 陰陽拳</label>
-                    <label><input type="checkbox" name="box1" value="10"> 光之拳</label>
-                    <label><input type="checkbox" name="box1" value="10"> 日月精拳</label>
-                    <label><input type="checkbox" name="box1" value="10"> 八段錦</label>
+                    <label><input type="radio" name="box1" value="10"> 打拳</label>
+                    <label><input type="radio" name="box1" value="10"> 當下之舞(僅限未學過打拳者)</label>
                 </div>
             </section>
 
-            <!-- 2BOX 調頻 -->
+            <!-- 2BOX 選修定課 -->
             <section class="box-card" data-box="2">
-                <div class="box-title"><span class="box-number">2</span>每日調頻定課</div>
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">選修</span>每日選修定課</div>
                 <p class="note">勾選一項得 10 分，每日上限 20 分</p>
                 <div class="grid grid-cols-2 gap-1 mt-3 checkbox-group">
-                    <label><input type="checkbox" name="box2" value="10"> 五感恩</label>
-                    <label><input type="checkbox" name="box2" value="10"> 大笑功法</label>
-                    <label><input type="checkbox" name="box2" value="10"> 一日一蔬食</label>
-                    <label><input type="checkbox" name="box2" value="10"> 自我肯定</label>
-                    <label><input type="checkbox" name="box2" value="10"> 餐前感恩</label>
-                    <label><input type="checkbox" name="box2" value="10"> 欣賞身邊的人</label>
-                    <label><input type="checkbox" name="box2" value="10"> 觀心書</label>
-                    <label><input type="checkbox" name="box2" value="10"> 子時入睡</label>
-                    <label><input type="checkbox" name="box2" value="10"> 祝福</label>
-                    <label><input type="checkbox" name="box2" value="10"> 恩啊吽</label>
-                    <label><input type="checkbox" name="box2" value="10"> 熱舞</label>
-                    <label><input type="checkbox" name="box2" value="10"> 感異冥想</label>
-                    <label><input type="checkbox" name="box2" value="10"> 淨心功法</label>
-                    <label><input type="checkbox" name="box2" value="10"> 舞之禪</label>
-                    <label><input type="checkbox" name="box2" value="10"> 接地氣與吐穢氣</label>
+                    <label><input type="checkbox" name="box2_1" value="10"> 丹氣慢跑</label>
+                    <label><input type="checkbox" name="box2_2" value="10"> 五感恩</label>
+                    <label><input type="checkbox" name="box2_3" value="10"> 觀心書</label>
+                    <label><input type="checkbox" name="box2_4" value="10"> 大悲咒</label>
+                    <label><input type="checkbox" name="box2_5" value="10"> 吃素一天</label>
                 </div>
             </section>
 
-            <!-- 3BOX 心得 -->
+            <!-- 3BOX W2天使通話心得 -->
             <section class="box-card" data-box="3">
-                <div class="box-title"><span class="box-number">3</span>分享親證心得</div>
-                <p class="note">三大群分享(200字以上)，每則 30 分，每天限一則</p>
+              <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W2天使通話</div>
+                <p class="note">本週上限 60 分</p>
                 <div class="checkbox-group mt-3">
-                    <label><input type="checkbox" name="box3" value="30"> 已分享親證心得</label>
+                    <label><input type="checkbox" name="box3" value="10"> 完成天使通話+截圖</label>
+                    <label><input type="checkbox" name="box3" value="20"> 心得分享-150字以上</label>
+                    <label><input type="checkbox" name="box3" value="15"> 回饋自己小天使+完成自己行動方案-100字以上</label>
+                    <label><input type="checkbox" name="box3" value="15"> 回饋別組夥伴+完成自己行動方案-100字以上</label>
                 </div>
             </section>
 
-            <!-- 4BOX 實體活動 -->
+            <!-- 4BOX 電影行動方案 -->
             <section class="box-card" data-box="4">
-                <div class="box-title"><span class="box-number">4</span>參加心成實體活動</div>
-                <p class="note">每日限 1 次，得 50 分</p>
+               <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W3行動方案</div>
+                <p class="note">開訓當天電影行動方案，請放小組記事本，大隊長05/21 12:00PM前繳回，本週限 1 次，得 10 分</p>
                 <div class="checkbox-group mt-3 space-y-1">
-                    <label><input type="radio" name="box4" value="50"> 心成大堂課 / 同學會 / 課後課</label>
-                    <label><input type="radio" name="box4" value="50"> 心成官方會議 / 社團例會 / 破曉晨運班</label>
-                    <label><input type="radio" name="box4" value="50"> 大超越實體解憂 / 親證班 / 課後課</label>
-                    <label><input type="radio" name="box4" value="0" checked> 以上皆無</label>
+                    <label><input type="checkbox" name="box4" value="10"> 完成行動方案，並放在小組記事本中</label>
                 </div>
             </section>
 
-            <!-- 5BOX 大超越巔峰 -->
+            <!-- 5BOX W3親證分享文 -->
             <section class="box-card" data-box="5">
-                <div class="box-title"><span class="box-number">5</span>大超越巔峰</div>
-                <p class="note">全期間限一次，即可獲得 600 分</p>
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W3親證分享文</div>
+                <p class="note">150字以上，本週限 1 次，得 20 分</p>
                 <div class="checkbox-group mt-3">
-                    <label><input type="checkbox" name="box5" value="600"> 已參加「大超越巔峰」</label>
+                    <label><input type="checkbox" name="box5" value="20"> 完成親證分享文</label>
                 </div>
             </section>
 
-            <!-- 6BOX 素食 -->
+            <!-- 6BOX W3心得回饋反思 -->
             <section class="box-card" data-box="6">
-                <div class="box-title"><span class="box-number">6</span>愛護地球尊重生命</div>
-                <p class="note">全期間限一次發分</p>
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W3心得回饋+行動方案</div>
+                <p class="note">100字以上，本週限 2 次，得 20 分</p>
                 <div class="checkbox-group mt-3 space-y-2">
-                    <label><input type="radio" name="box6" value="100"> 我願開始一日一蔬食 (+100)</label>
-                    <label><input type="radio" name="box6" value="400"> 親證班期間全程吃素 (+400)</label>
-                    <label><input type="radio" name="box6" value="1200"> 生生世世吃素 (+1200)</label>
-                    <label><input type="radio" name="box6" value="0" checked> 尚未開始</label>
+                    <label><input type="checkbox" name="box6" value="10"> 回饋自己小天使+完成自己行動方案</label>
+                    <label><input type="checkbox" name="box6" value="10"> 回饋別組夥伴+完成自己行動方案</label>
                 </div>
             </section>
 
-            <!-- 7BOX 生生世世系列 -->
+           <!-- 7BOX W3天使通話 -->
             <section class="box-card" data-box="7">
-                <div class="box-title"><span class="box-number">7</span>報名【生生世世系列】</div>
-                <div class="checkbox-group mt-3 space-y-1">
-                    <label><input type="checkbox" name="box7" value="300"> 已報名「告別負債」(+300)</label>
-                    <label><input type="checkbox" name="box7" value="300"> 已報名「告別貧窮」(+300)</label>
+              <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W3天使通話</div>
+                <p class="note">主題：鼓勵親證，本週上限 10 分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="checkbox" name="box7" value="10"> 完成天使通話+截圖</label>
                 </div>
             </section>
 
-            <!-- 8BOX 社團 -->
+            <!-- 8BOX W4天使通話心得 -->
             <section class="box-card" data-box="8">
-                <div class="box-title"><span class="box-number">8</span>報名【社團聯誼會／續會】</div>
-                <p class="note">依年資給分 (500~2000)</p>
-                <div class="flex justify-between mt-4 checkbox-group text-center">
-                    <label class="flex-col !items-center"><input type="radio" name="box8" value="500" class="!mr-0 mb-1"> 1年</label>
-                    <label class="flex-col !items-center"><input type="radio" name="box8" value="1000" class="!mr-0 mb-1"> 2年</label>
-                    <label class="flex-col !items-center"><input type="radio" name="box8" value="1500" class="!mr-0 mb-1"> 3年</label>
-                    <label class="flex-col !items-center"><input type="radio" name="box8" value="2000" class="!mr-0 mb-1"> 4年</label>
-                    <label class="flex-col !items-center"><input type="radio" name="box8" value="0" class="!mr-0 mb-1" checked> 無</label>
+              <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W4天使通話</div>
+                <p class="note">主題：鼓勵接觸大自然，本週上限 10 分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="checkbox" name="box8" value="10"> 完成天使通話+截圖+接觸大自然的照片</label>
                 </div>
             </section>
 
-            <!-- 9BOX 高階課程 -->
+             <!-- 9BOX W4接地體驗 -->
             <section class="box-card" data-box="9">
-                <div class="box-title"><span class="box-number">9</span>報名【高階課程】</div>
-                <p class="note">每項完款得 1000 分</p>
-                <div class="checkbox-group mt-3 space-y-1">
-                    <label><input type="checkbox" name="box9_2" value="1000"> 已完款「二階」</label>
-                    <label><input type="checkbox" name="box9_3" value="1000"> 已完款「三階」</label>
-                    <label><input type="checkbox" name="box9_4" value="1000"> 已完款「四階」</label>
-                    <label><input type="checkbox" name="box9_5" value="1000"> 賀！「五階」完款！</label>
+              <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W4接地體驗</div>
+                <p class="note">接觸大自然+拍照記錄，本週上限 10 分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="checkbox" name="box9" value="10"> 完成接地體驗+拍照記錄</label>
                 </div>
             </section>
 
-            <!-- 10BOX 五運班 -->
+            <!-- 10BOX W4心得回饋反思 -->
             <section class="box-card" data-box="10">
-                <div class="box-title"><span class="box-number">10</span>報名【五運班】</div>
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W4心得回饋+行動方案</div>
+                <p class="note">100字以上，本週限 2 次，得 20 分</p>
+                <div class="checkbox-group mt-3 space-y-2">
+                    <label><input type="checkbox" name="box10" value="10"> 回饋自己小天使+完成自己行動方案</label>
+                    <label><input type="checkbox" name="box10" value="10"> 回饋別組夥伴+完成自己行動方案</label>
+                </div>
+            </section>
+
+            <!-- 11BOX W4定課回顧分享文 -->
+            <section class="box-card" data-box="11">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W4定課回顧分享文</div>
+                <p class="note">300字以上，或錄影2.5-3分鐘，本週限 1 次，得 20 分</p>
                 <div class="checkbox-group mt-3">
-                    <label><input type="checkbox" name="box10" value="1000"> 已完款「五運班」(+1000)</label>
+                    <label><input type="checkbox" name="box11" value="20"> 完成定課回顧分享</label>
                 </div>
             </section>
 
-            <!-- 11BOX 傳愛 -->
-            <section class="box-card border-l-pink-500" data-box="11">
-                <div class="box-title"><span class="box-number">11</span>傳愛</div>
-                <p class="note">完款 1 位得 1000 分！無上限</p>
-                <div class="mt-3">
-                     <input type="text" id="box11_names" name="box11_names" class="w-full border-gray-300 rounded-xl shadow-sm border p-4 outline-none" placeholder="填寫新朋友姓名，多人請用逗點隔開" oninput="calculateTotal()">
-                    <p class="text-xs text-pink-600 mt-2 font-bold">目前傳愛得分：<span id="box11_score">0</span>
-                    </p>
-                </div>
-            </section>
-
-            <!-- 12BOX 全勤 -->
+            <!-- 12BOX W5天使通話心得 -->
             <section class="box-card" data-box="12">
-                <div class="box-title"><span class="box-number">12</span>全勤獎</div>
-                <p class="note">出席開幕、所有課後課、結業典禮</p>
+              <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W5天使通話</div>
+                <p class="note">本週上限 10 分</p>
                 <div class="checkbox-group mt-3">
-                    <label><input type="checkbox" name="box12" value="0"> 全勤無遲到早退</label>
+                    <label><input type="checkbox" name="box12" value="10"> 完成天使通話+截圖</label>
                 </div>
             </section>
 
-            <!-- 13BOX 超級頻率 -->
+            <!-- 13BOX W5心得回饋反思 -->
             <section class="box-card" data-box="13">
-                <div class="box-title"><span class="box-number">13</span>報名【超級頻率】</div>
-                <p class="note">報名完款即得 800 分</p>
-                <div class="checkbox-group mt-3">
-                    <label><input type="checkbox" name="box13" value="800"> 已完款「超級頻率」</label>
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W5心得回饋+行動方案</div>
+                <p class="note">100字以上，本週限 2 次，得 20 分</p>
+                <div class="checkbox-group mt-3 space-y-2">
+                    <label><input type="checkbox" name="box13" value="10"> 回饋自己小天使+完成自己行動方案</label>
+                    <label><input type="checkbox" name="box13" value="10"> 回饋別組夥伴+完成自己行動方案</label>
                 </div>
             </section>
 
-            <!-- 14BOX 備註 -->
-            <section class="box-card border-l-slate-400" data-box="14">
-                <div class="box-title"><span class="box-number">14</span>其他備註說明</div>
+            <!-- 14BOX W5持續力親證 -->
+            <section class="box-card" data-box="14">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W5持續力親證</div>
+                <p class="note">每項15分，得 30 分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="checkbox" name="box14" value="15"> 卡關地方，再嘗試走一步</label>
+                    <label><input type="checkbox" name="box14" value="15"> 已經很棒的地方，看見自己的光</label>
+                </div>
+            </section>
+
+            <!-- 15BOX W6天使通話 -->
+            <section class="box-card" data-box="15">
+              <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W6天使通話</div>
+                <p class="note">本週上限 10 分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="checkbox" name="box16" value="10"> 完成天使通話+截圖</label>
+                </div>
+            </section>
+
+            <!-- 16BOX W6穿越黑暗 -->
+            <section class="box-card" data-box="16">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W6穿越黑暗、完成影片錄製</div>
+                <p class="note">本週上限 50 分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="checkbox" name="box16" value="50"> 完成自己的影片錄製+上傳小群</label>
+                </div>
+            </section>
+
+            <!-- 17BOX W7天使通話 -->
+            <section class="box-card" data-box="17">
+              <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W7天使通話</div>
+                <p class="note">本週上限 10 分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="checkbox" name="box17" value="10"> 完成天使通話+截圖</label>
+                </div>
+            </section>
+
+            <!-- 18BOX W7三道菜 -->
+            <section class="box-card" data-box="18">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W7三道菜分享+回饋</div>
+                <p class="note">本週上限 50 分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="checkbox" name="box18" value="30"> 完成三道菜</label>
+                    <label><input type="checkbox" name="box18" value="10"> 完成心得分享</label>
+                    <label><input type="checkbox" name="box18" value="10"> 回饋反思</label>
+                </div>
+            </section>
+
+            <!-- 19BOX W7破冰加碼 -->
+            <section class="box-card" data-box="19">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">主題親證</span>W9破冰加碼三道菜</div>
+                <p class="note">上限10分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="radio" name="box19" value="10"> 和父親完成</label>
+                    <label><input type="radio" name="box19" value="10"> 和母親完成</label>
+                    <label><input type="radio" name="box19" value="10"> 和師長完成</label>
+                    <label><input type="radio" name="box19" value="10"> 和上級完成</label>
+                    <label><input type="radio" name="box19" value="10"> 和關係陷入瓶頸者完成</label>
+                </div>
+            </section>
+
+            <!-- 20BOX W8天使通話心得 -->
+            <section class="box-card" data-box="20">
+              <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full font-semibold tracking-wide" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">主題親證</span>W8天使通話</div>
+                <p class="note">本週上限 30 分</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="checkbox" name="box20" value="10"> 完成天使通話+截圖</label>
+                    <label><input type="checkbox" name="box20" value="10"> 心得分享-150字以上</label>
+                    <label><input type="checkbox" name="box20" value="10"> 回饋自己小天使+完成自己行動方案-100字以上</label>
+                </div>
+            </section>
+
+           <!-- 21BOX 聯誼會會籍 -->
+            <section class="box-card" data-box="21">
+            <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題</span>聯誼會會籍有效期</div>
+                <p class="note">依有效期給分 (20~100分)</p>
+                <div class="checkbox-group mt-3">
+                    <label><input type="radio" name="box21" value="10"> 超過115/12/31</label>
+                    <label><input type="radio" name="box21" value="10"> 116/6/30-116/12/31</label>
+                    <label><input type="radio" name="box21" value="10"> 超過116/12/31</label>
+                </div>
+            </section>
+
+           <!-- 22BOX 高階課程 -->
+            <section class="box-card" data-box="22">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題</span>報名【高階課程】</div>
+                <p class="note">完款得 100 分 / 5000元訂金 得 50 分 </p>
+                <div class="checkbox-group mt-3 space-y-1">
+                    <label><input type="checkbox" name="box22" value="100"> 完款「二階」</label>
+                    <label><input type="checkbox" name="box22" value="100"> 完款「三階」</label>
+                    <label><input type="checkbox" name="box22" value="100"> 完款「四階」</label>
+                    <label><input type="checkbox" name="box22" value="100"> 賀！「五階」完款！</label>
+                    <label><input type="checkbox" name="box22" value="100"> 完款「五運班」</label>
+                    <label><input type="checkbox" name="box22" value="50"> 「二階」訂金5000元</label>
+                    <label><input type="checkbox" name="box22" value="50"> 「三階」訂金5000元</label>
+                    <label><input type="checkbox" name="box22" value="50"> 「四階」訂金5000元</label>
+                    <label><input type="checkbox" name="box22" value="50"> 「五階」訂金5000元</label>
+                    <label><input type="checkbox" name="box22" value="50">「五運班」訂金5000元</label>
+                </div>
+            </section>
+
+            <!-- 23BOX 傳愛完款 -->
+            <section class="box-card border-l-pink-500" data-box="23">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題</span>傳愛完款</div>
+                <p class="note">完款 1 位得 100 分！無上限</p>
+                <div class="mt-3">
+                    <input type="number" id="box23_count" name="box23_count" class="w-full border-gray-300 rounded-xl shadow-sm border p-4 outline-none" value=0 >
+                </div>
+                <div class="mt-3">
+                    <input type="text" id="box23_names" name="box23_names" class="w-full border-gray-300 rounded-xl shadow-sm border p-4 outline-none" placeholder="填寫新朋友姓名，多人請用逗點隔開">
+                </div>
+            </section>
+
+            <!-- 24BOX 傳愛訂金 -->
+            <section class="box-card border-l-pink-500" data-box="24">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題</span>傳愛訂金</div>
+                <p class="note">5000元訂金 1 位得 50 分！無上限</p>
+                <div class="mt-3">
+                    <input type="number" id="box24_count" name="box24_count" class="w-full border-gray-300 rounded-xl shadow-sm border p-4 outline-none" value=0 >
+                </div>
+                <div class="mt-3">
+                    <input type="text" id="box24_names" name="box24_names" class="w-full border-gray-300 rounded-xl shadow-sm border p-4 outline-none" placeholder="填寫新朋友姓名，多人請用逗點隔開">
+                </div>
+            </section>
+
+            <!-- 25BOX 進階課程 -->
+            <section class="box-card" data-box="25">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題</span>報名【進階課程】</div>
+                <p class="note">含複訓，1堂課得 50 分</p>
+                <div class="checkbox-group mt-3 space-y-1">
+                    <label><input type="checkbox" name="box25" value="50"> 已報名「生命蛻變」</label>
+                    <label><input type="checkbox" name="box25" value="50"> 已報名「生命數字」</label>
+                </div>
+            </section>
+
+            <!-- 26BOX 加分題1 -->
+            <section class="box-card" data-box="26">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題1</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 27BOX 加分題2 -->
+            <section class="box-card" data-box="27">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題2</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 28BOX 加分題3 -->
+            <section class="box-card" data-box="28">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題3</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 29BOX 加分題4 -->
+            <section class="box-card" data-box="29">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題4</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 30BOX 加分題5 -->
+            <section class="box-card" data-box="30">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題5</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 31BOX 加分題6 -->
+            <section class="box-card" data-box="31">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題6</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 32BOX 加分題7 -->
+            <section class="box-card" data-box="32">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題7</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 33BOX 加分題8 -->
+            <section class="box-card" data-box="33">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題8</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 34BOX 加分題9 -->
+            <section class="box-card" data-box="34">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題9</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 35BOX 加分題10 -->
+            <section class="box-card" data-box="35">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題10</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 36BOX 加分題11 -->
+            <section class="box-card" data-box="36">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題11</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 37BOX 加分題12 -->
+            <section class="box-card" data-box="37">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題12</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 38BOX 加分題13 -->
+            <section class="box-card" data-box="38">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題13</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 39BOX 加分題14 -->
+            <section class="box-card" data-box="39">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題14</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 40BOX 加分題15 -->
+            <section class="box-card" data-box="40">
+                <div class="box-title flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-[#f3f4f6] text-gray-600 font-semibold tracking-wide" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe;">加分題15</span></div>
+                <p class="note">  </p>
+                <div class="checkbox-group mt-3 space-y-1"></div>
+            </section>
+
+            <!-- 備註 -->
+            <section class="box-card border-l-slate-400">
+                <div class="box-title"><span class="box-number">📝</span>其他備註說明</div>
                 <textarea id="remarks" name="remarks" rows="2" class="w-full border-gray-200 rounded-xl border p-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="如果有特殊情況請在此註記..."></textarea>
             </section>
 
@@ -323,19 +587,21 @@
     </main>
 
     <script>
-        // 設定親證班日期範圍 (請依照實際需求調整)
+        // 設定親證班日期範圍
         const campaignConfig = {
-            startDate: "2026-05-03", 
-            durationDays: 7, 
-            user: { 
-                id: "<?= user.id ?>", 
-                name: "<?= user.name ?>", 
-                team: "<?= user.team ?>",
+            startDate: "2026-05-03",
+            durationDays: 7,
+            user: {
+                memberId: "<?= user.memberId ?>",    // Supabase members.id（BIGINT）— 提交時需要
+                id:       "<?= user.id ?>",           // member_code（如 T011_周子維_嘉家久）
+                name:     "<?= user.name ?>",
+                team:     "<?= user.team ?>",
                 teamCode: "<?= user.teamCode ?>"
             }
         };
 
         const viewBtn = document.getElementById('viewBtn');
+        const submitBtn = document.getElementById('submitBtn');
 
         let selectedDate = "";
         let completedDates = [];
@@ -349,30 +615,30 @@
         function initDatePicker() {
             const picker = document.getElementById('datePicker');
             const start = new Date(campaignConfig.startDate);
-            
+
             for (let i = 0; i < campaignConfig.durationDays; i++) {
                 const d = new Date(start);
                 d.setDate(start.getDate() + i);
                 const dateStr = d.toISOString().split('T')[0];
-                
-               const btn = document.createElement('div');
+
+                const btn = document.createElement('div');
                 btn.id = `date-${dateStr}`;
                 btn.className = 'date-btn pending flex-shrink-0';
-								 
                 btn.innerHTML = `<span class="text-[12px] block font-bold opacity-70">${d.getMonth()+1}/</span><span class="text-xl font-black">${d.getDate()}</span>`;
-										
                 btn.onclick = () => selectDate(dateStr);
                 picker.appendChild(btn);
             }
         }
 
-        // 從後端獲取已填寫過的日期
-        function fetchUserStatus() {
-            if (typeof google !== 'undefined') {
-                google.script.run.withSuccessHandler(dates => {
-                    completedDates = dates || [];
-                    updateDateStyles();
-                }).getUserStatus(campaignConfig.user.id);
+        // 從 Supabase 獲取已填寫過的日期
+        async function fetchUserStatus() {
+            try {
+                const memberId = parseInt(campaignConfig.user.memberId);
+                if (!memberId) return;
+                completedDates = await window.scoringAPI.getCompletedDates(memberId);
+                updateDateStyles();
+            } catch (err) {
+                console.error('fetchUserStatus 失敗', err);
             }
         }
 
@@ -380,17 +646,12 @@
         function selectDate(date) {
             selectedDate = date;
             document.getElementById('selectedDateText').innerText = date;
-            
-            // UI 更新
             document.querySelectorAll('.date-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`date-${date}`).classList.add('active');
-            
-            // 解鎖按鈕
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = false;
-            btn.innerText = "同一天填表單只會抓最後一次資料";
-            
-            // 重置表單並重新計算 (如果是編輯舊資料，這裡可擴充 fetch 舊資料功能)
+
+            submitBtn.disabled = false;
+            submitBtn.innerText = "確認送出（同一天多次提交將以最後一筆為準）";
+
             document.getElementById('mainForm').reset();
             calculateTotal();
         }
@@ -398,64 +659,72 @@
         function updateDateStyles() {
             completedDates.forEach(d => {
                 const btn = document.getElementById(`date-${d}`);
-                if (btn) { 
-                    btn.classList.remove('pending'); 
-                    btn.classList.add('completed'); 
+                if (btn) {
+                    btn.classList.remove('pending');
+                    btn.classList.add('completed');
                 }
             });
         }
 
-           // --- 核心計算與資料收集邏輯 ---
-       function getBoxScores() {
-		
+        // --- 分數計算邏輯 ---
+        function getBoxScores() {
             const form = document.getElementById('mainForm');
             const formData = new FormData(form);
             const scores = {};
-            
-            // Box 1 (Max 10)
-            scores.box1_SCORE = form.querySelectorAll('input[name="box1"]:checked').length > 0 ? 10 : 0;
-												   
-            
+
+            // Box 1 (Max 10) — radio，任一即 10
+            scores.box1_SCORE = parseInt(formData.get('box1') || 0);
+
             // Box 2 (Max 20)
-            const b2Count = form.querySelectorAll('input[name="box2"]:checked').length;
+            const b2Count = form.querySelectorAll('input[name^="box2_"]:checked').length;
             scores.box2_SCORE = Math.min(b2Count * 10, 20);
-            
-            // Box 3
-            scores.box3_SCORE = formData.get('box3') ? 30 : 0;
-            
-            // Box 4
-            scores.box4_SCORE = parseInt(formData.get('box4') || 0);
-            
-            // Box 5
-            scores.box5_SCORE = formData.get('box5') ? 600 : 0;
-            
-            // Box 6
-            scores.box6_SCORE = parseInt(formData.get('box6') || 0);
-            
-            // Box 7
-            scores.box7_SCORE = (formData.get('box7_1') ? 300 : 0) + (formData.get('box7_2') ? 300 : 0);
-            
-            // Box 8
-            scores.box8_SCORE = parseInt(formData.get('box8') || 0);
-            
-            // Box 9
-            const b9Count = form.querySelectorAll('input[name^="box9_"]:checked').length;
-            scores.box9_SCORE = b9Count * 1000;
-            
-            // Box 10
-            scores.box10_SCORE = formData.get('box10') ? 1000 : 0;
-            
-            // Box 11 (傳愛 - 每人 1000)			   
-            const names = document.getElementById('box11_names').value.trim();
-            const count = names ? names.split(/[,，\s\n]+/).filter(n => n.trim() !== "").length : 0;
-            scores.box11_SCORE = count * 1000;
-            
-            // Box 12
-            scores.box12_SCORE = 0; 
-            
-            // Box 13
-            scores.box13_SCORE = formData.get('box13') ? 800 : 0;
-            
+
+            // Box 3~20 (每個都是勾選加總)
+            function sumChecked(name) {
+                return Array.from(form.querySelectorAll(`input[name="${name}"]:checked`))
+                    .reduce((s, el) => s + parseInt(el.value || 0), 0);
+            }
+            scores.box3_SCORE  = sumChecked('box3');
+            scores.box4_SCORE  = sumChecked('box4');
+            scores.box5_SCORE  = sumChecked('box5');
+            scores.box6_SCORE  = sumChecked('box6');
+            scores.box7_SCORE  = sumChecked('box7');
+            scores.box8_SCORE  = sumChecked('box8');
+            scores.box9_SCORE  = sumChecked('box9');
+            scores.box10_SCORE = sumChecked('box10');
+            scores.box11_SCORE = sumChecked('box11');
+            scores.box12_SCORE = sumChecked('box12');
+            scores.box13_SCORE = sumChecked('box13');
+            scores.box14_SCORE = sumChecked('box14');
+            scores.box15_SCORE = sumChecked('box15');
+            scores.box16_SCORE = sumChecked('box16');
+            scores.box17_SCORE = sumChecked('box17');
+            scores.box18_SCORE = sumChecked('box18');
+            scores.box19_SCORE = parseInt(formData.get('box19') || 0); // radio
+            scores.box20_SCORE = sumChecked('box20');
+
+            // Box 21 (聯誼會會籍，radio)
+            scores.box21_SCORE = parseInt(formData.get('box21') || 0);
+
+            // Box 22 (高階課程，所有勾選加總)
+            scores.box22_SCORE = sumChecked('box22');
+
+            // Box 23 (傳愛完款 × 100)
+            const box23Count = parseInt(formData.get('box23_count') || 0);
+            scores.box23_SCORE = box23Count * 100;
+
+            // Box 24 (傳愛訂金 × 50)
+            const box24Count = parseInt(formData.get('box24_count') || 0);
+            scores.box24_SCORE = box24Count * 50;
+
+            // Box 25 (進階課程)
+            scores.box25_SCORE = sumChecked('box25');
+
+            // Box 26~40 (加分題 1~15，尚未定)
+            for (let i = 26; i <= 40; i++) {
+                scores[`box${i}_SCORE`] = 0;
+            }
+
             return scores;
         }
 
@@ -463,97 +732,86 @@
             const scoresMap = getBoxScores();
             const total = Object.values(scoresMap).reduce((a, b) => a + b, 0);
             document.getElementById('totalScoreDisplay').innerText = total;
-            // 修正顯示：直接顯示分數，不含括號
-            document.getElementById('box11_score').innerText = scoresMap.box11_SCORE;
             return total;
         }
 
-        // 提交表單：整理所有細項文字
-        document.getElementById('mainForm').onsubmit = function(e) {
+        // --- 提交表單：存入 Supabase daily_reports ---
+        document.getElementById('mainForm').onsubmit = async function(e) {
             e.preventDefault();
             if (!selectedDate) return alert("請先選取日期！");
 
+            const memberId = parseInt(campaignConfig.user.memberId);
+            if (!memberId) {
+                alert("身份識別失敗，請回到登入頁重新登入");
+                return;
+            }
+
             document.getElementById('loadingOverlay').style.display = 'flex';
-            
-           const scoresMap = getBoxScores();
-            const details = {}; // 建立符合後端需求之 details 物件
-														
+
+            const scoresMap = getBoxScores();
+            const boxData = {};    // Supabase JSONB 欄位
+
             document.querySelectorAll('section[data-box]').forEach(section => {
                 const id = section.getAttribute('data-box');
-											 
-                
+
                 // 處理 Content
                 let content = "";
-                if (id === "11") {
-                    content = document.getElementById('box11_names').value;
-                } else if (id === "14") {
-                    content = document.getElementById('remarks').value;
+                if (id === "23" || id === "24") {
+                    const namesEl = document.getElementById(`box${id}_names`);
+                    content = namesEl ? namesEl.value : "";
                 } else {
                     const checked = Array.from(section.querySelectorAll('input:checked'))
-                        .map(i => {
-                          // 排除「無」的選項文字
-                            if(i.value === "0" && ["4", "6", "8"].includes(id)) return null;
-                            return i.parentElement.textContent.trim();
-                        })
+                        .map(i => i.parentElement.textContent.trim())
                         .filter(Boolean);
                     content = checked.join(',');
                 }
 
-                // 組合數據
-                if (id === "14") {
-                    details.box14 = content; 
-                } else {
-                    // 重要：確保把計算出的分數放進 details
-                    details[`box${id}_SCORE`] = scoresMap[`box${id}_SCORE`] || 0;
-                    details[`box${id}_CONTENT`] = content;
-                }
+                boxData[`box${id}`] = {
+                    score:   scoresMap[`box${id}_SCORE`] || 0,
+                    content: content
+                };
             });
 
-            const submitData = {
-                user: campaignConfig.user,
-                selectedDate: selectedDate,
-                totalScore: calculateTotal(),
-                details: details 
-            };
+            const totalScore = calculateTotal();
+            const remarksEl = document.getElementById('remarks');
+            const remarks = remarksEl ? remarksEl.value : '';
 
-																							 
-            if (typeof google !== 'undefined') {
-                google.script.run
-                    .withSuccessHandler(() => {
-                        document.getElementById('loadingOverlay').style.display = 'none';
-                        alert("親證數據上傳成功！");
-                        if (!completedDates.includes(selectedDate)) completedDates.push(selectedDate);
-                        updateDateStyles();
-                    })
-                    .withFailureHandler(err => {
-                        document.getElementById('loadingOverlay').style.display = 'none';
-                        alert("上傳失敗：" + err);
-                    })
-                    .saveForm(submitData);
+            // 送出到 Supabase
+            const result = await window.scoringAPI.saveReport({
+                memberId:   memberId,
+                reportDate: selectedDate,
+                totalScore: totalScore,
+                boxData:    boxData,
+                remarks:    remarks
+            });
+
+            document.getElementById('loadingOverlay').style.display = 'none';
+
+            if (result.success) {
+                alert("親證數據上傳成功！");
+                if (!completedDates.includes(selectedDate)) completedDates.push(selectedDate);
+                updateDateStyles();
             } else {
-									 
-                // 本地測試邏輯
-                 console.log("SubmitData for debug:", submitData);
-		  
-                setTimeout(() => { document.getElementById('loadingOverlay').style.display = 'none'; alert("測試模式提交成功"); }, 500);
-
-        }
+                alert("上傳失敗：" + result.error);
+            }
         };
 
+        // --- 查看個人歷史 ---
         viewBtn.addEventListener('click', function() {
             if (this.disabled) return;
-            
+
             const originalHTML = this.innerHTML;
             this.disabled = true;
             submitBtn.disabled = true;
-            this.innerHTML = '<div class="spinner !border-indigo-600 !border-t-transparent"></div> <span>讀取紀錄中...</span>';
+            this.innerHTML = '<span>讀取紀錄中...</span>';
 
-            const user = campaignConfig.user; // 從您的配置中讀取 user 物件
+            const user = campaignConfig.user;
 
             if (typeof google !== 'undefined') {
                 google.script.run.withSuccessHandler(function(url) {
                     const params = [
                         `page=history`,
+                        `memberId=${encodeURIComponent(user.memberId)}`,
                         `id=${encodeURIComponent(user.id)}`,
                         `name=${encodeURIComponent(user.name)}`,
                         `team=${encodeURIComponent(user.team)}`,
@@ -563,16 +821,11 @@
                 }).getScriptUrl();
             } else {
                 setTimeout(() => {
-                    alert("模擬跳轉到 History 頁面\n參數：\n" + 
-                        `id: ${user.id}\n` +
-                        `name: ${user.name}\n` +
-                        `team: ${user.team}\n` +
-                        `teamCode: ${user.teamCode}`
-                    );
+                    alert("模擬跳轉到 History 頁面：" + JSON.stringify(user, null, 2));
                     this.disabled = false;
                     submitBtn.disabled = false;
                     this.innerHTML = originalHTML;
-                }, 800);
+                }, 500);
             }
         });
     </script>

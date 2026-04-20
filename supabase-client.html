@@ -1,0 +1,129 @@
+<!--
+  Supabase Client Library
+  引入方式：在其他 HTML 檔的 <head> 加入 <?!= include('supabase-client') ?>
+  透過 doGet 將 SUPABASE_URL / SUPABASE_ANON_KEY 注入模板
+-->
+
+<!-- Supabase JS SDK（CDN 載入）-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+(function () {
+    const SUPABASE_URL = '<?= supabaseUrl ?>';
+    const SUPABASE_ANON_KEY = '<?= supabaseKey ?>';
+
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        console.error('[supabase-client] 缺少 Supabase URL / Key 環境設定');
+        return;
+    }
+
+    // 建立 Supabase 客戶端（掛在全域，供其他 HTML 的 <script> 使用）
+    window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // =====================================================
+    // scoringAPI：統一的資料存取介面
+    // 封裝所有對 Supabase 的操作，讓 HTML 層看起來跟原本 google.script.run 類似
+    // =====================================================
+    window.scoringAPI = {
+
+        /**
+         * 取得所有成員（用於 Index 頁面的姓名下拉選單）
+         * 回傳：[{id, member_code, name, role, team_id, team_code, team_name, squad_code, squad_name, ...}, ...]
+         */
+        async getMemberList() {
+            const { data, error } = await window.sb
+                .from('members_public')
+                .select('*')
+                .order('name');
+            if (error) {
+                console.error('[getMemberList]', error);
+                return [];
+            }
+            return data || [];
+        },
+
+        /**
+         * 驗證登入（姓名 + PIN）
+         * 回傳：{id, member_code, name, role, team_*, squad_*, ...} 或 null（失敗）
+         */
+        async authenticate(name, pin) {
+            const { data, error } = await window.sb.rpc('authenticate_member', {
+                p_name: name,
+                p_pin: pin
+            });
+            if (error) {
+                console.error('[authenticate]', error);
+                return null;
+            }
+            return (data && data.length > 0) ? data[0] : null;
+        },
+
+        /**
+         * 儲存一筆填分紀錄
+         * payload = { memberId, reportDate, totalScore, boxData, remarks }
+         * 回傳：{ success: true, data } 或 { success: false, error }
+         */
+        async saveReport(payload) {
+            const { data, error } = await window.sb
+                .from('daily_reports')
+                .insert({
+                    member_id: payload.memberId,
+                    report_date: payload.reportDate,
+                    total_score: payload.totalScore,
+                    box_data: payload.boxData,
+                    remarks: payload.remarks || null
+                })
+                .select()
+                .single();
+            if (error) {
+                console.error('[saveReport]', error);
+                return { success: false, error: error.message };
+            }
+            return { success: true, data };
+        },
+
+        /**
+         * 取得某使用者已填表的日期（供填分頁「已完成」標記）
+         * 回傳：['2026-05-03', '2026-05-04', ...]
+         */
+        async getCompletedDates(memberId) {
+            const { data, error } = await window.sb
+                .from('daily_reports')
+                .select('report_date')
+                .eq('member_id', memberId);
+            if (error) {
+                console.error('[getCompletedDates]', error);
+                return [];
+            }
+            const unique = [...new Set((data || []).map(r => r.report_date))];
+            return unique;
+        },
+
+        /**
+         * 取得某使用者的完整歷史紀錄（依日期，保留每日最後一筆）
+         * 回傳：[{report_date, total_score, box_data, remarks, submitted_at}, ...]
+         */
+        async getPersonalHistory(memberId) {
+            const { data, error } = await window.sb
+                .from('daily_reports')
+                .select('*')
+                .eq('member_id', memberId)
+                .order('submitted_at', { ascending: false });
+            if (error) {
+                console.error('[getPersonalHistory]', error);
+                return [];
+            }
+            // 同一天多筆 → 只留最新（submitted_at DESC，第一筆即為最新）
+            const byDate = {};
+            for (const row of (data || [])) {
+                if (!byDate[row.report_date]) {
+                    byDate[row.report_date] = row;
+                }
+            }
+            return Object.values(byDate);
+        }
+    };
+
+    console.log('[supabase-client] 已就緒');
+})();
+</script>
