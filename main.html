@@ -605,11 +605,63 @@
 
         let selectedDate = "";
         let completedDates = [];
+        let boxDefinitions = [];  // Supabase 載入的 box 元資料（含 options）
 
-        window.onload = function() {
+        window.onload = async function() {
             initDatePicker();
+            await loadBoxDefinitions();
             fetchUserStatus();
         };
+
+        // --- 載入 box_definitions 並綁定到 HTML 的 section/input ---
+        async function loadBoxDefinitions() {
+            try {
+                boxDefinitions = await window.scoringAPI.getBoxDefinitions(1);
+            } catch (err) {
+                console.error('loadBoxDefinitions 失敗', err);
+                return;
+            }
+
+            // 建立 box_no → definition 快速查表
+            const defByBoxNo = {};
+            boxDefinitions.forEach(d => { defByBoxNo[d.box_no] = d; });
+
+            // 為每個 section[data-box] 標註 boxDefinitionId，並對內部 input 匹配 option_id
+            document.querySelectorAll('section[data-box]').forEach(section => {
+                const boxNo = parseInt(section.getAttribute('data-box'));
+                const def = defByBoxNo[boxNo];
+                if (!def) return;
+                section.dataset.boxDefinitionId = def.id;
+                section.dataset.inputType = def.input_type;
+
+                // 為每個 input 配對 option_id（依 label 文字正規化比對）
+                const optionByLabel = {};
+                (def.options || []).forEach(o => {
+                    optionByLabel[normalizeLabel(o.option_label)] = o.id;
+                });
+
+                section.querySelectorAll('label').forEach(label => {
+                    const input = label.querySelector('input[type="checkbox"], input[type="radio"]');
+                    if (!input) return;
+                    const text = label.textContent || '';
+                    const optId = optionByLabel[normalizeLabel(text)];
+                    if (optId) {
+                        input.dataset.optionId = optId;
+                    }
+                });
+            });
+        }
+
+        // 標籤正規化：去空白、半/全形括號與逗點統一
+        function normalizeLabel(s) {
+            if (!s) return '';
+            return s.toString()
+                .replace(/\s+/g, '')
+                .replace(/[（(]/g, '(')
+                .replace(/[）)]/g, ')')
+                .replace(/[，,]/g, ',')
+                .replace(/[。．]/g, '.');
+        }
 
         // 初始化日期選取器
         function initDatePicker() {
@@ -735,7 +787,7 @@
             return total;
         }
 
-        // --- 提交表單：存入 Supabase daily_reports ---
+        // --- 提交表單：呼叫 save_daily_report RPC（atomic 寫入三張表）---
         document.getElementById('mainForm').onsubmit = async function(e) {
             e.preventDefault();
             if (!selectedDate) return alert("請先選取日期！");
@@ -749,40 +801,53 @@
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             const scoresMap = getBoxScores();
-            const boxData = {};    // Supabase JSONB 欄位
+            const items = [];
 
             document.querySelectorAll('section[data-box]').forEach(section => {
-                const id = section.getAttribute('data-box');
+                const boxNo = section.getAttribute('data-box');
+                const defId = section.dataset.boxDefinitionId;
+                if (!defId) return; // 還沒載入 box_definitions 就送出，跳過
 
-                // 處理 Content
-                let content = "";
-                if (id === "23" || id === "24") {
-                    const namesEl = document.getElementById(`box${id}_names`);
-                    content = namesEl ? namesEl.value : "";
-                } else {
-                    const checked = Array.from(section.querySelectorAll('input:checked'))
-                        .map(i => i.parentElement.textContent.trim())
-                        .filter(Boolean);
-                    content = checked.join(',');
+                const score = parseInt(scoresMap[`box${boxNo}_SCORE`]) || 0;
+
+                // content_text：box 23/24 (mixed) 使用姓名輸入；其他非勾選類使用 null
+                let contentText = null;
+                if (boxNo === "23" || boxNo === "24") {
+                    const namesEl = document.getElementById(`box${boxNo}_names`);
+                    const txt = namesEl ? namesEl.value.trim() : '';
+                    if (txt) contentText = txt;
                 }
 
-                boxData[`box${id}`] = {
-                    score:   scoresMap[`box${id}_SCORE`] || 0,
-                    content: content
-                };
+                // selected_option_ids：從 :checked 的 input 取 dataset.optionId
+                const selectedOptionIds = Array.from(
+                    section.querySelectorAll('input:checked')
+                )
+                    .map(i => parseInt(i.dataset.optionId))
+                    .filter(id => !isNaN(id));
+
+                // 空白 item（沒得分、沒選項、沒文字）不送出，讓 DB 保持精簡
+                if (score === 0 && selectedOptionIds.length === 0 && !contentText) return;
+
+                items.push({
+                    box_definition_id:    parseInt(defId),
+                    score:                score,
+                    content_text:         contentText,
+                    selected_option_ids:  selectedOptionIds
+                });
             });
 
             const totalScore = calculateTotal();
             const remarksEl = document.getElementById('remarks');
-            const remarks = remarksEl ? remarksEl.value : '';
+            const remarks = remarksEl ? remarksEl.value.trim() : '';
 
-            // 送出到 Supabase
+            // 呼叫 RPC（atomic；失敗時 DB 完全不變）
             const result = await window.scoringAPI.saveReport({
                 memberId:   memberId,
+                activityId: 1,
                 reportDate: selectedDate,
                 totalScore: totalScore,
-                boxData:    boxData,
-                remarks:    remarks
+                remarks:    remarks || null,
+                items:      items
             });
 
             document.getElementById('loadingOverlay').style.display = 'none';

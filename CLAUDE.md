@@ -181,18 +181,54 @@ Claude 所有工作都在這個測試沙盒完成
 # 技術架構
 
 ```
-Google Sheets（資料庫）
+Supabase (PostgreSQL)                    ← 資料庫（2026-04-20 從 Google Sheets 遷移）
+        ↑
+  前端 JS → window.sb.rpc / .from()      ← 所有 CRUD 走前端，不經 Apps Script
         ↓
-Google Apps Script（後端邏輯 + 網站）
+Google Apps Script (Web App)             ← 只剩 doGet 路由 HTML + 注入 Supabase URL/Key
         ↓
-Looker Studio（報表 Dashboard，唯讀）
+HTML pages (Index / main / history)      ← 填表、查歷史的 UI
 ```
 
-- 後端語言：JavaScript（Google Apps Script）
-- 資料庫：Google Sheets
-- 報表工具：Looker Studio（Google Data Studio）
+- 後端語言：PostgreSQL / PL/pgSQL（Supabase），JavaScript（Apps Script doGet only）
+- 資料庫：Supabase（專案 ID `ygpaipsdwiaaxdbghemb`）
 - 版本控制：GitHub
 - 本機開發工具：clasp（Google 官方 Apps Script CLI）
+
+## 核心 Schema（2026-04-20 Level 3 BCNF 正規化後）
+
+```
+box_definitions (box_no, week_no, category, title, input_type, multi_select, max_score)
+ └─ box_options (box_definition_id, option_label, score_value, display_order)
+
+members, teams, squads                   ← 成員/隊伍主資料
+
+daily_reports (member_id, activity_id, report_date, total_score, remarks)
+ └─ daily_report_items (report_id, box_definition_id, score, content_text,
+                        audit_status, audited_by, audited_at, audit_notes)
+    └─ daily_report_item_options (item_id, option_id)
+```
+
+- `activity_id BIGINT DEFAULT 1` 於所有主表預留多活動升級路徑（目前不建 `activities` 表、不設 FK）
+- 審計官逐格審核欄位在 `daily_report_items` 層級
+- 寫入統一走 `save_daily_report(...)` RPC（atomic transaction；失敗 rollback 不留殘資料）
+- 讀取歷史透過 `supabase-client.html:scoringAPI.getPersonalHistory()`（nested JOIN + 扁平化給 history.html）
+
+## 資料存取模式
+
+- **前端 JS → Supabase** 的統一介面在 `supabase-client.html:scoringAPI`，包含：
+  - `getMemberList()` / `authenticate(name, pin)`：成員與登入
+  - `getBoxDefinitions(activityId)`：載入 40 個 box 與其選項
+  - `saveReport(payload)`：呼叫 `save_daily_report` RPC 寫入
+  - `getCompletedDates(memberId)` / `getPersonalHistory(memberId)`：查已填日期、歷史紀錄
+- **Apps Script** `webApp.js` 只剩 `doGet` 做路由 + 透過 template 變數把 `SUPABASE_URL` / `SUPABASE_ANON_KEY` 注入 HTML
+
+## 技術債（demo 階段，正式上線前要收斂）
+
+1. `SUPABASE_ANON_KEY` 預設值寫在 `config.js`（已可讀 Script Properties 覆寫，但 fallback 有效）
+2. `daily_report_items` / `daily_report_item_options` RLS 允許 anon 直接 INSERT（實際寫入走 RPC 不會用到，但未擋）
+3. PIN 明文存 `members.pin_code`（無 hash）
+4. 前端 `main.html` 的 40 個 box HTML 仍硬編碼（尚未 data-driven render；升級路徑保留）
 
 ## 開發流程
 

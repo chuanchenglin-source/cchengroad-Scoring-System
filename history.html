@@ -270,22 +270,9 @@
                     // 本機模擬（未登入）
                     allHistoryData = generateMockData();
                 } else {
-                    const rows = await window.scoringAPI.getPersonalHistory(memberId);
-                    // 將 Supabase 回傳的 {report_date, total_score, box_data} 扁平化成舊格式
-                    allHistoryData = rows.map(r => {
-                        const flat = {
-                            date:  r.report_date,
-                            score: r.total_score || 0,
-                            remark: r.remarks || ''
-                        };
-                        const boxes = r.box_data || {};
-                        for (let b = 1; b <= 40; b++) {
-                            const box = boxes[`box${b}`] || {};
-                            flat[`box${b}_score`]   = box.score   || 0;
-                            flat[`box${b}_content`] = box.content || '';
-                        }
-                        return flat;
-                    });
+                    // getPersonalHistory 已回傳扁平化資料：
+                    // { date, score, remark, box1_score, box1_content, ..., box40_score, box40_content }
+                    allHistoryData = await window.scoringAPI.getPersonalHistory(memberId);
                 }
                 document.getElementById('loadingOverlay').classList.add('hidden');
                 calculateSummary();

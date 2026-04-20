@@ -22,13 +22,12 @@
 
     // =====================================================
     // scoringAPI：統一的資料存取介面
-    // 封裝所有對 Supabase 的操作，讓 HTML 層看起來跟原本 google.script.run 類似
+    // 封裝所有對 Supabase 的操作
     // =====================================================
     window.scoringAPI = {
 
         /**
          * 取得所有成員（用於 Index 頁面的姓名下拉選單）
-         * 回傳：[{id, member_code, name, role, team_id, team_code, team_name, squad_code, squad_name, ...}, ...]
          */
         async getMemberList() {
             const { data, error } = await window.sb
@@ -44,7 +43,6 @@
 
         /**
          * 驗證登入（姓名 + PIN）
-         * 回傳：{id, member_code, name, role, team_*, squad_*, ...} 或 null（失敗）
          */
         async authenticate(name, pin) {
             const { data, error } = await window.sb.rpc('authenticate_member', {
@@ -59,32 +57,62 @@
         },
 
         /**
-         * 儲存一筆填分紀錄
-         * payload = { memberId, reportDate, totalScore, boxData, remarks }
-         * 回傳：{ success: true, data } 或 { success: false, error }
+         * 取得某活動所有 box 定義與選項（供填表頁載入 UI）
+         * 回傳：
+         *   [{ id, box_no, week_no, category, title, note, input_type,
+         *      multi_select, max_score, is_active, options: [{id, option_label, score_value, display_order}] }, ...]
+         */
+        async getBoxDefinitions(activityId = 1) {
+            const { data, error } = await window.sb
+                .from('box_definitions')
+                .select(`
+                    id, box_no, week_no, category, title, note,
+                    input_type, multi_select, max_score, is_active,
+                    options:box_options (id, option_label, score_value, display_order, is_active)
+                `)
+                .eq('activity_id', activityId)
+                .eq('is_active', true)
+                .order('box_no');
+            if (error) {
+                console.error('[getBoxDefinitions]', error);
+                return [];
+            }
+            // 確保 options 按 display_order 排序（Supabase nested select 不保證順序）
+            return (data || []).map(d => ({
+                ...d,
+                options: (d.options || [])
+                    .filter(o => o.is_active !== false)
+                    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+            }));
+        },
+
+        /**
+         * 儲存一筆填分紀錄（atomic 呼叫 save_daily_report RPC）
+         * payload = {
+         *   memberId, activityId=1, reportDate, totalScore, remarks,
+         *   items: [
+         *     { box_definition_id, score, content_text, selected_option_ids: [id, ...] }
+         *   ]
+         * }
          */
         async saveReport(payload) {
-            const { data, error } = await window.sb
-                .from('daily_reports')
-                .insert({
-                    member_id: payload.memberId,
-                    report_date: payload.reportDate,
-                    total_score: payload.totalScore,
-                    box_data: payload.boxData,
-                    remarks: payload.remarks || null
-                })
-                .select()
-                .single();
+            const { data, error } = await window.sb.rpc('save_daily_report', {
+                p_member_id:    payload.memberId,
+                p_activity_id:  payload.activityId || 1,
+                p_report_date:  payload.reportDate,
+                p_total_score:  payload.totalScore || 0,
+                p_remarks:      payload.remarks || null,
+                p_items:        payload.items || []
+            });
             if (error) {
                 console.error('[saveReport]', error);
-                return { success: false, error: error.message };
+                return { success: false, error: error.message || String(error) };
             }
-            return { success: true, data };
+            return { success: true, reportId: data };
         },
 
         /**
          * 取得某使用者已填表的日期（供填分頁「已完成」標記）
-         * 回傳：['2026-05-03', '2026-05-04', ...]
          */
         async getCompletedDates(memberId) {
             const { data, error } = await window.sb
@@ -100,27 +128,80 @@
         },
 
         /**
-         * 取得某使用者的完整歷史紀錄（依日期，保留每日最後一筆）
-         * 回傳：[{report_date, total_score, box_data, remarks, submitted_at}, ...]
+         * 取得某使用者的完整歷史紀錄
+         *
+         * 讀取邏輯：
+         *   1. 從 daily_reports 撈該 member 的所有報告
+         *   2. 每筆 report 帶出所有 daily_report_items + 每個 item 的 selected options + box 定義
+         *   3. 同一天多筆 → 只留最新（按 submitted_at DESC）
+         *   4. 扁平化成舊格式（history.html 不需修改）：
+         *      { date, score, remark, box1_score, box1_content, ..., box40_score, box40_content }
          */
         async getPersonalHistory(memberId) {
             const { data, error } = await window.sb
                 .from('daily_reports')
-                .select('*')
+                .select(`
+                    id, report_date, total_score, remarks, submitted_at,
+                    items:daily_report_items (
+                        score, content_text,
+                        box_definition:box_definitions!inner (box_no),
+                        selections:daily_report_item_options (
+                            option:box_options (option_label, display_order)
+                        )
+                    )
+                `)
                 .eq('member_id', memberId)
                 .order('submitted_at', { ascending: false });
+
             if (error) {
                 console.error('[getPersonalHistory]', error);
                 return [];
             }
-            // 同一天多筆 → 只留最新（submitted_at DESC，第一筆即為最新）
+
+            // 同一天多筆 → 只保留最新（submitted_at DESC 排序後，第一筆即最新）
             const byDate = {};
-            for (const row of (data || [])) {
-                if (!byDate[row.report_date]) {
-                    byDate[row.report_date] = row;
+            for (const report of (data || [])) {
+                if (!byDate[report.report_date]) {
+                    byDate[report.report_date] = report;
                 }
             }
-            return Object.values(byDate);
+
+            // 扁平化
+            return Object.values(byDate).map(report => {
+                const flat = {
+                    date:   report.report_date,
+                    score:  report.total_score || 0,
+                    remark: report.remarks || ''
+                };
+
+                // 初始化 40 格預設值
+                for (let b = 1; b <= 40; b++) {
+                    flat[`box${b}_score`]   = 0;
+                    flat[`box${b}_content`] = '';
+                }
+
+                // 逐筆 item 填入對應的 box_no 欄位
+                for (const item of (report.items || [])) {
+                    const boxNo = item.box_definition && item.box_definition.box_no;
+                    if (!boxNo) continue;
+
+                    flat[`box${boxNo}_score`] = item.score || 0;
+
+                    // content 決定：若有勾選選項 → 用選項標籤逗號串；否則用 content_text
+                    const selections = (item.selections || [])
+                        .map(s => s.option)
+                        .filter(o => o && o.option_label)
+                        .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+                        .map(o => o.option_label);
+                    if (selections.length > 0) {
+                        flat[`box${boxNo}_content`] = selections.join(',');
+                    } else {
+                        flat[`box${boxNo}_content`] = item.content_text || '';
+                    }
+                }
+
+                return flat;
+            });
         }
     };
 
