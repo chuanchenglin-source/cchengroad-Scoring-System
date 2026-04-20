@@ -38,6 +38,7 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 
 - **專案共用 Google Drive**（網站主導者建立，團隊共用）：https://drive.google.com/drive/folders/1-37xaAxIOEmZaQGk6vGat4NQAVbqIWPn
 - **`給Claude讀取的資料/`**（本機資料夾，Johnson 個人維護）：放置供 Claude 參考的檔案（PPT、截圖、規則文件、會議記錄等）。**透過 Google Drive + symlink/junction 跨機器同步**（詳見下方「給Claude讀取的資料/ 跨機器同步機制」章節）。
+  - **`給Claude讀取的資料/Claude回饋的檔案/`**：Claude 產出的報表、分析文件、整理結果等**輸出檔案的集中存放處**。當 Johnson 請 Claude「做一份報表」「整理一份清單」「產出分析文件」時，除非另有指定，預設存到這個資料夾。也會透過 Google Drive 跨機器同步，所以 Mac / Windows 上的 Claude 產出的檔案互通。
 
 ## 測試環境資源（Johnson 專用沙盒）
 
