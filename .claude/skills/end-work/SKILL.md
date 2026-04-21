@@ -1,112 +1,126 @@
 ---
 name: 收工
 description: >
-  結束今天工作時的收尾自動化。Commit 改動、詢問是否 push、更新 memory、摘要進度。
+  結束今天工作時的收尾自動化。Commit 改動、詢問是否 push、更新待辦清單、摘要進度。
   當使用者說「收工」、「今天到這」、「先這樣」、「結束」、「下班」、「同步一下」、
   「幫我 commit」、「我要換電腦了」，或任何表示要結束當前工作階段的意圖時，使用這個 skill。
 ---
 
 # /收工 — 結束工作收尾自動化
 
-這個 skill 在每次結束工作時自動執行收尾步驟，確保進度被保存、同步、記錄。
-
 ## 執行步驟
 
-### Step 1：檢查工作區狀態
+### Step 1：盤點工作區與未推送 commit
 
 ```bash
 git status
+git log origin/develop..HEAD --oneline
 ```
 
-根據結果分兩條路：
-- **有改動** → 繼續 Step 2
-- **沒有改動（工作區乾淨）** → 跳到 Step 4
+分流：
+- **有改動** → 走 Step 2
+- **工作區乾淨但有未推送 commit** → 跳到 Step 3
+- **都沒有** → 跳到 Step 4
 
-### Step 2：Commit 改動
+### Step 2：Commit 改動（含安全偵測）
 
-先列出所有改動的檔案，讓 Johnson 確認。
+**先做安全偵測**：掃描 `git status` 輸出，若有以下可疑檔案，**先停下來逐個跟 Johnson 確認**才繼續：
 
-然後執行：
+- `.env*`（環境變數，可能含密鑰）
+- `*.key` / `*.pem` / `*credentials*` / `*secret*`（憑證）
+- `給Claude*/`（個人參考資料，不應上 git）
+- `.clasp.*.json`（含 Script ID）
+- 任何看起來像私密 / 大型 / 不該進 repo 的檔案
+
+通過偵測後：
 
 ```bash
 git add -A
+git commit -m "<中文 commit message>"
 ```
 
-**自動產生 commit message**：根據改動的檔案內容，用中文寫一段簡潔的 commit message。格式：
+Commit message 格式：
 
 ```
 [主要改動的一句話摘要]
 
 - [改動1]
 - [改動2]
-- ...
 ```
-
-執行 commit：
-
-```bash
-git commit -m "..."
-```
-
-**注意**：
-- `.gitignore` 裡列出的檔案不會被 commit（包括 `給Claude讀取的資料/`、`.claude/`、`.clasp.*.json` 等）
-- 如果不確定某個檔案該不該 commit，問 Johnson
 
 ### Step 3：詢問是否 Push
 
-**一定要問，不要自動 push。** 用這個格式：
+確認當前分支：
 
+```bash
+git branch --show-current
 ```
-已 commit。要推到 GitHub 嗎？（git push origin develop）
+
+非 `develop` 或 `feature/*` 分支 → **停下問 Johnson**，不要直接 push。
+
+問：「已 commit。要推到 GitHub 嗎？（git push origin <branch>）」
+
+- 同意 → `git push origin <branch>`
+- 不同意 → 跳過，提醒下次可以手動 push
+
+**絕對不能 push main。**
+
+### Step 4：更新待辦清單
+
+從 auto-loaded `MEMORY.md` 找待辦 memory（檔名類似 `project_pending_todos.md`）。
+**找不到就建立一個**（type=project）放在 `MEMORY.md` 同層的 memory 目錄。
+
+根據今天的對話：
+
+1. **勾掉今天完成的項目**（已完成的可直接刪除，不需保留）
+2. **新增今天發現但未做完的待辦**
+3. **保留尚未處理的舊待辦**
+
+更新前**先列出「異動清單」給 Johnson 確認**，避免誤刪。
+
+待辦檔案格式建議：
+
+```markdown
+---
+name: 待辦事項（跨 session）
+description: 下次接手時要做的事，由 /收工 寫入、/開工 讀取
+type: project
+---
+
+## 進行中
+- [ ] [待辦項目，含足夠脈絡讓未來的 Claude 看懂]
+
+## 等待外部回應
+- [ ] [等誰、等什麼、何時跟進]
 ```
 
-等 Johnson 回覆：
-- 「好」/「推」/「push」→ 執行 `git push origin develop`
-- 「不用」/「先不要」→ 跳過，告訴他下次可以手動 push
+完成後若這個 memory 還沒在 `MEMORY.md` 索引裡，加上去。
 
-**絕對不能 push 到 main 分支。** 如果當前分支不是 develop 或 feature branch，**停下來問 Johnson**。
-
-### Step 4：更新 Memory
-
-讀取現有的 memory 檔案，根據今天的工作內容更新。
-
-更新的內容應包含：
-- 今天做了什麼（簡述）
-- 目前停在哪裡
-- 下一步建議做什麼
-
-Memory 檔案路徑用 Glob 搜尋 `**/.claude/projects/*/memory/MEMORY.md` 找到。
-更新對應的 memory 檔案內容，以及 MEMORY.md 索引。
-
-如果 memory 目錄不存在，建立它。
-
-### Step 5：摘要今天進度
-
-用中文、白話，整理今天的工作摘要：
+### Step 5：摘要
 
 ```
 ## 收工摘要
 
 **今天完成的事：**
-- [做了什麼1]
-- [做了什麼2]
+- [事項1]
+- [事項2]
 
-**目前停在：**
-[停在哪裡、什麼狀態]
+**目前停在：** [狀態]
 
-**下次建議：**
-[下一步可以做什麼]
+**留給下次的待辦：**
+- [ ] [待辦1]
+- [ ] [待辦2]
 
 **同步狀態：**
-- commit: ✓ [commit hash 前7碼]
-- push: ✓/✗
-- memory: ✓ 已更新
+- commit: ✓ [hash 前 7 碼] / 無改動
+- push: ✓ / ✗（跳過）/ 不適用
+- 待辦 memory: ✓ 已更新 / 無變動
 ```
+
+如果 Johnson 提到要換電腦繼續，最後加一句：「另一台先 `git pull origin develop` 再開工。」
 
 ## 注意事項
 
-- **push 前一定要問**，這是對外動作
-- **不能 push main**，只能 push develop 或 feature branch
-- **不能用 push:prod**，不能碰正式環境
-- 所有指令都是跨平台的（Mac / Windows Git Bash / PowerShell）
-- 如果 Johnson 說「明天在另一台電腦繼續」，在摘要裡提醒他先 `git pull origin develop`
+- push 前一定要問
+- 非 develop / feature 分支不能直接 push
+- 不能用 `push:prod`，不碰正式環境
