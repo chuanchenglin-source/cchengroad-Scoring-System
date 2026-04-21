@@ -605,18 +605,19 @@ SS_ID_SCORE  = 1JgDikkNEV0CKuiJNic4stTy57G-ltTzDCbzXFr5E1Ao
 - 分數規則統計方式
 - 統一格式（標題、按鈕、大小、用詞）
 - 更改小幫手大頭照
-- 分數計算做在資料端（Google Sheets 函數），Looker Studio 單純報表呈現
+- 分數計算做在資料端（Supabase）
+- Dashboard 做在網頁內建（Apps Script Web App 內的頁面）
 
-## Looker Studio Dashboard（四個）
+## 網頁內建 Dashboard（規劃中）
 1. 審計官 Dashboard
 2. 各小隊長看分數的 Dashboard
 3. 大隊長看分數的 Dashboard
-4. 排名
+4. 排名頁
 
 ## 審計官功能
 - 從 W2 開始啟用
 - 需要審核截圖和心得分享
-- 注意：Looker Studio 只能呈現，審計官的**審核打勾**動作需要在 Apps Script 網站或 Google Sheets 直接操作
+- 審核打勾動作在 Apps Script 網站直接操作
 
 ---
 
