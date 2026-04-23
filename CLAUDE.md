@@ -195,7 +195,7 @@ HTML pages (Index / main / history)      ← 填表、查歷史的 UI
 - 版本控制：GitHub
 - 本機開發工具：clasp（Google 官方 Apps Script CLI）
 
-## 核心 Schema（2026-04-20 Level 3 BCNF 正規化後）
+## 核心 Schema（2026-04-20 Level 3 BCNF 正規化後，2026-04-23 加 scoring_rules）
 
 ```
 box_definitions (box_no, week_no, category, title, input_type, multi_select, max_score)
@@ -207,12 +207,21 @@ daily_reports (member_id, activity_id, report_date, total_score, remarks)
  └─ daily_report_items (report_id, box_definition_id, score, content_text,
                         audit_status, audited_by, audited_at, audit_notes)
     └─ daily_report_item_options (item_id, option_id)
+
+scoring_rules (activity_id, rule_key, rule_value JSONB, category, is_active)
+                                          ← 可調計分規則資料化（2026-04-23 新增）
 ```
 
 - `activity_id BIGINT DEFAULT 1` 於所有主表預留多活動升級路徑（目前不建 `activities` 表、不設 FK）
 - 審計官逐格審核欄位在 `daily_report_items` 層級
 - 寫入統一走 `save_daily_report(...)` RPC（atomic transaction；失敗 rollback 不留殘資料）
 - 讀取歷史透過 `supabase-client.html:scoringAPI.getPersonalHistory()`（nested JOIN + 扁平化給 history.html）
+
+### 規則與角色可見範圍 function（在 `scripts/supabase-import/06-08-*.sql` 草稿中）
+- `get_rule(activity_id, rule_key) RETURNS JSONB` — 單一入口讀規則，NULL = 規則未設定 / 已停用
+- `v_squad_scope(viewer_id) RETURNS SETOF members_public` — 依 viewer role 回傳可見 member 清單
+- `get_visible_reports(viewer_id, start_date?, end_date?)` — 讀報表 RPC，內部呼叫 `v_squad_scope` 做過濾
+- ⚠️ 這些 SQL **尚未套用到測試 Supabase**（待 Johnson 回來手動執行，見 `add-scoring-rules-and-role-access` change tasks 5.1-5.7）
 
 ## 資料存取模式
 
