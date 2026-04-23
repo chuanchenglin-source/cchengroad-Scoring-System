@@ -13,13 +13,18 @@ CLAUDE.md 與 MEMORY.md 已被系統自動載入，**不要重複讀**。
 
 ## 執行步驟
 
-### Step 1：拉最新程式碼
+### Step 1：自動拉最新程式碼
 
 ```bash
 git pull origin develop
 ```
 
-衝突就**停下**告訴 Johnson，不要自動解決。
+**分流**：
+- 成功（含 Already up to date）→ 繼續
+- 衝突 → **停下**告訴 Johnson 有哪幾個檔案衝突，不要自動解決
+- 錯誤（例如網路斷線、認證失敗）→ 停下顯示錯誤，不 retry
+
+**背景**：2026-04-23 Johnson 明確說「將自動 push 及 pull 寫進收工及開工程序中」，因此 pull 是預設行為不問。
 
 ### Step 2：確認環境
 

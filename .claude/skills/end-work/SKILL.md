@@ -1,7 +1,7 @@
 ---
 name: 收工
 description: >
-  結束今天工作時的收尾自動化。Commit 改動、詢問是否 push、更新待辦清單、摘要進度。
+  結束今天工作時的收尾自動化。Commit 改動、自動 push（develop/feature/*）、更新待辦清單、摘要進度。
   當使用者說「收工」、「今天到這」、「先這樣」、「結束」、「下班」、「同步一下」、
   「幫我 commit」、「我要換電腦了」，或任何表示要結束當前工作階段的意圖時，使用這個 skill。
 ---
@@ -48,7 +48,7 @@ Commit message 格式：
 - [改動2]
 ```
 
-### Step 3：詢問是否 Push
+### Step 3：自動 Push（2026-04-23 起 Johnson 授權 auto-push）
 
 確認當前分支：
 
@@ -56,14 +56,14 @@ Commit message 格式：
 git branch --show-current
 ```
 
-非 `develop` 或 `feature/*` 分支 → **停下問 Johnson**，不要直接 push。
+**分流**：
+- `develop` 或 `feature/*` → **直接** `git push origin <branch>`，不問
+- `main` → **絕對不 push**，停下告訴 Johnson 當前在 main 分支（異常狀態）
+- 其他分支名稱（例如 `hotfix/*`、隨手命的 branch）→ **停下問 Johnson** 再決定
 
-問：「已 commit。要推到 GitHub 嗎？（git push origin <branch>）」
+push 失敗時：顯示錯誤訊息，**不自動 retry / force**，等 Johnson 判斷。
 
-- 同意 → `git push origin <branch>`
-- 不同意 → 跳過，提醒下次可以手動 push
-
-**絕對不能 push main。**
+**背景**：2026-04-23 Johnson 明確說「將自動 push 及 pull 寫進收工及開工程序中」，因此 develop/feature/* 不再需要逐次確認。
 
 ### Step 4：更新待辦清單
 
@@ -113,14 +113,15 @@ type: project
 
 **同步狀態：**
 - commit: ✓ [hash 前 7 碼] / 無改動
-- push: ✓ / ✗（跳過）/ 不適用
+- push: ✓ 已 push 到 origin/<branch> / ✗ 因 <原因> 未 push
 - 待辦 memory: ✓ 已更新 / 無變動
 ```
 
-如果 Johnson 提到要換電腦繼續，最後加一句：「另一台先 `git pull origin develop` 再開工。」
+如果 Johnson 提到要換電腦繼續，最後加一句：「另一台 `/開工` 會自動 pull，直接 `/開工` 就好。」
 
 ## 注意事項
 
-- push 前一定要問
-- 非 develop / feature 分支不能直接 push
+- develop / feature/* 自動 push，**不需要問**（2026-04-23 Johnson 授權）
+- **絕對不**直接 push main；在 main 分支時停下問
+- 非 develop / feature/* 分支（hotfix、隨手命名）停下問
 - 不能用 `push:prod`，不碰正式環境
