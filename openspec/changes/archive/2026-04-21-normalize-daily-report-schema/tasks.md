@@ -26,7 +26,7 @@
 
 - [x] 4.1 建立 `scripts/supabase-import/04b-seed-box-definitions.sql`，依對照表 INSERT 40 筆 `box_definitions`（Seed Data for Box Definitions）
 - [x] 4.2 於同檔案中為每個 checkbox 類型 box INSERT 對應的 `box_options` rows，含 `option_label` 與 `display_order`
-- [x] 4.3 腳本結尾加驗證 `DO $$ ... RAISE NOTICE` 區塊，確認 `box_definitions` 共 40 筆且每個 checkbox 類型 box 至少有一筆 `box_options`
+- [x] 4.3 腳本結尾加驗證 `DO $ ... RAISE NOTICE` 區塊，確認 `box_definitions` 共 40 筆且每個 checkbox 類型 box 至少有一筆 `box_options`
 
 ## 5. 原子寫入 RPC Function
 
@@ -63,7 +63,7 @@
 - [x] 9.3 驗證 RPC：在 SQL Editor 手動呼叫 `save_daily_report(...)` 以「全部 box 都填」payload，確認回傳 id 且資料進入三張表
 - [x] 9.4 驗證 RPC rollback：呼叫 `save_daily_report` 帶一個無效 `box_definition_id`，確認拋錯且三張表都沒有留下部分資料
 - [x] 9.5 `npm run push:dev` 推到測試 Apps Script（Mac 端可存取的測試 Script ID 是 `1xR7aW...`，已更新 `.clasp.dev.json`；b484ac3 commit 換成的新 ID `1qridi...` 在 Mac clasp 登入帳號下沒權限）
-- [ ] 9.6 開測試 Web App 手動跑一次完整流程：登入 → 填表（涵蓋 score_only/checkbox/text 三種類型）→ 送出 → 查歷史，確認畫面與資料都正確
+- [x] 9.6 開測試 Web App 手動跑一次完整流程：登入 → 填表（涵蓋 score_only/checkbox/text 三種類型）→ 送出 → 查歷史，確認畫面與資料都正確
 
 ## 10. 文件與記憶更新
 
