@@ -19,24 +19,31 @@ function doGet(e) {
     try {
         const template = HtmlService.createTemplateFromFile(page);
 
-        // 使用者資訊（從 URL 參數取得，維持原本架構）
-        template.user = {
-            id:       params.id       || "",
-            name:     params.name     || "",
-            team:     params.team     || "",
-            teamCode: params.teamCode || "",
-            memberId: params.memberId || ""   // Supabase 的 members.id（BIGINT）
-        };
+        // Admin 頁不從 URL params 取 user 識別（落實 Admin Page Routing）
+        // 認證走 Admin.html 內的 admin_login RPC，與 member URL params 完全隔離
+        const isAdminPage = (page === 'Admin');
 
-        template.name = params.name || '';
-        template.team = params.team || '';
+        if (!isAdminPage) {
+            // 使用者資訊（從 URL 參數取得，落實 URL Parameter Trust Model）
+            // 2026-04-25 對齊主程式設計師 0425：members.id 改 TEXT，id 即為 Supabase members.id
+            // 不再需要額外的 memberId（BIGINT）參數
+            template.user = {
+                id:       params.id       || "",   // members.id, e.g. T011_周子維_嘉家久
+                name:     params.name     || "",
+                team:     params.team     || "",
+                teamCode: params.teamCode || ""
+            };
 
-        // 注入 Supabase 環境設定，讓 supabase-client.html 可以讀到
+            template.name = params.name || '';
+            template.team = params.team || '';
+
+            // 保留 UserProperties 暫存機制（供歷史頁 getCurrentUser 使用）
+            storeCurrentUser(params.id || "", params.name || "航海士");
+        }
+
+        // 注入 Supabase 環境設定（所有頁面包含 Admin 都需要）
         template.supabaseUrl = SUPABASE_URL;
         template.supabaseKey = SUPABASE_ANON_KEY;
-
-        // 保留 UserProperties 暫存機制（供歷史頁 getCurrentUser 使用）
-        storeCurrentUser(params.id || "", params.name || "航海士");
 
         return template.evaluate()
             .setTitle('ONE PIECE-海洋親證班計分系統')

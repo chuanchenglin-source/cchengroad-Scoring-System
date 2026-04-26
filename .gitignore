@@ -13,6 +13,9 @@
 # ==== Supabase 匯入 SQL（含個資，不進 git）====
 scripts/supabase-import/02-import-members.sql
 
+# ==== Bootstrap admin SQL（含明文密碼，不進 git）====
+scripts/supabase-import/bootstrap-admin.sql
+
 # ==== 相依套件 ====
 node_modules/
 

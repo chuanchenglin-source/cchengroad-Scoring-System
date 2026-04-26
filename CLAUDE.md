@@ -195,21 +195,35 @@ HTML pages (Index / main / history)      ← 填表、查歷史的 UI
 - 版本控制：GitHub
 - 本機開發工具：clasp（Google 官方 Apps Script CLI）
 
-## 核心 Schema（2026-04-20 Level 3 BCNF 正規化後，2026-04-23 加 scoring_rules）
+## 核心 Schema（2026-04-20 Level 3 BCNF 正規化、2026-04-23 加 scoring_rules、2026-04-25 對齊主程式設計師 0425）
 
 ```
 box_definitions (box_no, week_no, category, title, input_type, multi_select, max_score)
  └─ box_options (box_definition_id, option_label, score_value, display_order)
 
-members, teams, squads                   ← 成員/隊伍主資料
+teams (team_code T01-T18, team_name, team_order, leader_name, form_label)  ← 18 大隊
+ └─ squads (squad_code T010-T184, squad_name, team_id FK, squad_leader_name) ← 76 小隊
+                       (squad_name 預設用 squad_leader_name；T17/T18 共 3 個保留來源命名)
+     └─ members (id TEXT PK 「T011_周子維_嘉家久」, name, squad_id FK,      ← 418 隊員
+                 team_id FK, leader_name, role, mentor)
+                 (pin_code 已永久移除 — 主辦方 2026-04-25 決議不用 PIN)
 
-daily_reports (member_id, activity_id, report_date, total_score, remarks)
+daily_reports (member_id TEXT FK, activity_id, report_date, total_score, remarks)
  └─ daily_report_items (report_id, box_definition_id, score, content_text,
-                        audit_status, audited_by, audited_at, audit_notes)
+                        audit_status, audited_by TEXT FK, audited_at, audit_notes)
     └─ daily_report_item_options (item_id, option_id)
 
 scoring_rules (activity_id, rule_key, rule_value JSONB, category, is_active)
                                           ← 可調計分規則資料化（2026-04-23 新增）
+
+admin_credentials (admin_id TEXT PK, name, password_hash bcrypt, is_active,
+                   created_at, last_login_at)
+                                          ← 管理後台帳號（2026-04-26 新增）
+                                          RLS enabled、anon 不可直接 SELECT，只能透過 RPC
+permission_matrix (role, capability, is_enabled, scope)
+                   UNIQUE(role, capability)
+                                          ← 權限矩陣資料化（2026-04-26 新增）
+                                          目前 30 筆 seed；尚未接入 v_squad_scope（解耦）
 ```
 
 - `activity_id BIGINT DEFAULT 1` 於所有主表預留多活動升級路徑（目前不建 `activities` 表、不設 FK）
@@ -226,17 +240,55 @@ scoring_rules (activity_id, rule_key, rule_value JSONB, category, is_active)
 ## 資料存取模式
 
 - **前端 JS → Supabase** 的統一介面在 `supabase-client.html:scoringAPI`，包含：
-  - `getMemberList()` / `authenticate(name, pin)`：成員與登入
+  - `getMemberList()`：成員名單（自 `members_public` view，不含 PIN 欄位）；前端 datalist 客戶端模糊搜尋（無 PIN 登入步驟）
   - `getBoxDefinitions(activityId)`：載入 40 個 box 與其選項
-  - `saveReport(payload)`：呼叫 `save_daily_report` RPC 寫入
-  - `getCompletedDates(memberId)` / `getPersonalHistory(memberId)`：查已填日期、歷史紀錄
-- **Apps Script** `webApp.js` 只剩 `doGet` 做路由 + 透過 template 變數把 `SUPABASE_URL` / `SUPABASE_ANON_KEY` 注入 HTML
+  - `saveReport(payload)`：呼叫 `save_daily_report(p_member_id TEXT, ...)` RPC 寫入
+  - `getCompletedDates(memberId TEXT)` / `getPersonalHistory(memberId TEXT)`：查已填日期、歷史紀錄
+- **使用者識別**：`Index.html` datalist 選定 → URL params 帶 `id` (TEXT, e.g. `T011_周子維_嘉家久`) `name` `team` `teamCode` 跨頁；`webApp.js doGet(e)` 注入到下游 template，無任何驗證（落實 URL Parameter Trust Model）
+- **Apps Script** `webApp.js` 只剩 `doGet` 做路由 + 透過 template 變數把 `SUPABASE_URL` / `SUPABASE_ANON_KEY` 注入 HTML；`?page=Admin` 路由 skip user 注入避免污染 UserProperties
+- **管理後台**：`supabase-client.html:adminAPI`（與 scoringAPI 完全區隔），14 個 method 涵蓋 login/logout/getSession + admin CRUD + permission_matrix CRUD + scoring_rules CRUD + members CRUD；認證採 sessionStorage 存 `cchg_admin_session={admin_id, password}`，每次 RPC 重驗
+
+## 管理後台
+
+### 進入方式
+- 測試環境：`<webapp_url>?page=Admin`（會載入 `Admin.html`）
+- Admin.html 不從 URL params 取 user — 用 admin_id + 密碼登入
+
+### 第一筆 admin 怎麼來（bootstrap）
+1. 複製 `scripts/supabase-import/bootstrap-admin.sql.example` → `bootstrap-admin.sql`
+2. 編輯 `bootstrap-admin.sql`：把 `__REPLACE_ME__` 換成真實密碼
+3. 在 Supabase SQL Editor 跑一次（service_role 會繞過 RLS）
+4. `bootstrap-admin.sql` 已 gitignored，不會進 git
+
+### 忘記密碼救援
+直接在 Supabase SQL Editor（service_role）跑：
+```sql
+UPDATE admin_credentials
+   SET password_hash = crypt('新密碼明文', gen_salt('bf'))
+ WHERE admin_id = 'chuanchenglin@gmail.com';
+```
+
+### 安全提醒
+- sessionStorage 存的是**明文密碼**（同 tab 內任何 JS 可讀），請務必：
+  - **使用無痕視窗操作後台**
+  - 用完登出（sessionStorage 在關 tab 後自動清除）
+  - **不要**在公用電腦留 tab 開著
+
+### 自鎖規則（寫在 RPC 內，前端無法繞過）
+- 不能停用自己的帳號（`admin_set_active` 拋 exception）
+- 至少要保留 1 個 active admin（最後一個 active 的不能被停用）
+
+### 權限矩陣解耦狀態（2026-04-26）
+- `permission_matrix` 表已建好、30 筆 seed 已 insert、`get_role_scope()` helper function 可用
+- 但 `v_squad_scope()` **尚未改寫**為查 permission_matrix（仍為 hardcoded CASE WHEN）
+- 後台「權限切換」分頁的 toggle 目前是**設定預覽**，實際讀取 scope 仍走舊邏輯
+- 待後續 change（例如 `wire-permission-matrix-into-scope`）收斂
 
 ## 技術債（demo 階段，正式上線前要收斂）
 
 1. `SUPABASE_ANON_KEY` 預設值寫在 `config.js`（已可讀 Script Properties 覆寫，但 fallback 有效）
 2. `daily_report_items` / `daily_report_item_options` RLS 允許 anon 直接 INSERT（實際寫入走 RPC 不會用到，但未擋）
-3. PIN 明文存 `members.pin_code`（無 hash）
+3. ~~PIN 明文存 `members.pin_code`（無 hash）~~ → **已拆除**（2026-04-25 主辦方決議不用 PIN，change `align-with-main-dev-0425`；`authenticate_member` RPC 與 `pin_code` 欄位皆已 DROP）
 4. 前端 `main.html` 的 40 個 box HTML 仍硬編碼（尚未 data-driven render；升級路徑保留）
 
 ## 開發流程

@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理後台 - 心成親證班計分系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <?!= include('supabase-client') ?>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: radial-gradient(circle at top left, #eef2ff 0%, #f8fafc 100%);
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .custom-input {
+            border: 2px solid #e2e8f0;
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+        }
+        .custom-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            outline: none;
+        }
+        .btn-primary {
+            background: #6366f1;
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-danger:disabled { background: #fca5a5; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover { background: #cbd5e1; }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            font-weight: 700;
+            border-bottom: 3px solid transparent;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            color: #6366f1;
+            border-bottom-color: #6366f1;
+        }
+        .tab-btn:hover:not(.active) { color: #475569; }
+
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        .data-table th {
+            text-align: left; padding: 0.75rem; background: #f1f5f9;
+            font-weight: 700; color: #334155; border-bottom: 2px solid #cbd5e1;
+        }
+        .data-table td {
+            padding: 0.75rem; border-bottom: 1px solid #e2e8f0;
+        }
+        .data-table tr:hover td { background: #f8fafc; }
+
+        .row-warning { background: #fef3c7 !important; }
+
+        /* 角色色票（依 members.role 著整行底色，提升可讀性） */
+        .row-team-leader   { background: #dbeafe !important; }  /* 大隊長 — 淺藍 */
+        .row-team-leader:hover td   { background: #bfdbfe !important; }
+        .row-squad-leader  { background: #fef9c3 !important; }  /* 小隊長 — 淺黃 */
+        .row-squad-leader:hover td  { background: #fef08a !important; }
+        .row-auditor       { background: #dcfce7 !important; }  /* 審計官 — 淺綠 */
+        .row-auditor:hover td       { background: #bbf7d0 !important; }
+        .row-executive     { background: #fee2e2 !important; }  /* 顧問   — 淺紅 */
+        .row-executive:hover td     { background: #fecaca !important; }
+
+        .alert-error {
+            background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+            padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem;
+        }
+        .alert-warn {
+            background: #fef3c7; border: 1px solid #fde68a; color: #92400e;
+            padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem;
+        }
+        .alert-info {
+            background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+            padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 500; font-size: 0.875rem;
+        }
+        .alert-success {
+            background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d;
+            padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem;
+        }
+
+        .toast {
+            position: fixed; top: 1rem; right: 1rem; z-index: 50;
+            min-width: 280px; max-width: 400px;
+            opacity: 0; transform: translateY(-10px);
+            transition: all 0.3s;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+
+<!-- Toast 通知區 -->
+<div id="toastContainer"></div>
+
+<!-- ============= 登入畫面 ============= -->
+<div id="loginScreen" class="min-h-screen flex items-center justify-center hidden">
+    <div class="card p-8" style="width: 100%; max-width: 420px;">
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4 shadow-lg shadow-indigo-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900">管理後台</h1>
+            <p class="text-sm text-slate-500 mt-2">心成親證班計分系統</p>
+        </div>
+
+        <div class="alert-warn mb-6">
+            ⚠️ 請使用無痕視窗以保護密碼安全
+        </div>
+
+        <form id="loginForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">管理員帳號</label>
+                <input type="text" id="loginAdminId" class="custom-input w-full px-4 py-3" placeholder="例如 chuanchenglin@gmail.com" required>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">密碼</label>
+                <input type="password" id="loginPassword" class="custom-input w-full px-4 py-3" required>
+            </div>
+            <div id="loginError" class="alert-error hidden"></div>
+            <button type="submit" id="loginBtn" class="btn-primary w-full">登入</button>
+        </form>
+    </div>
+</div>
+
+<!-- ============= 後台主畫面 ============= -->
+<div id="mainScreen" class="max-w-7xl mx-auto hidden">
+    <!-- 頂部 bar -->
+    <div class="card p-4 mb-4 flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-extrabold text-slate-900">🔒 管理後台</h1>
+            <p class="text-xs text-slate-500 mt-1">登入：<span id="currentAdminName" class="font-semibold text-indigo-700"></span></p>
+        </div>
+        <button id="logoutBtn" class="btn-secondary">登出</button>
+    </div>
+
+    <!-- 分頁切換 -->
+    <div class="card mb-4">
+        <div class="flex border-b border-slate-200 overflow-x-auto">
+            <button class="tab-btn active" data-tab="permissions">權限切換</button>
+            <button class="tab-btn" data-tab="rules">計分規則</button>
+            <button class="tab-btn" data-tab="roster">名單管理</button>
+            <button class="tab-btn" data-tab="admins">Admin 管理</button>
+        </div>
+    </div>
+
+    <!-- 分頁內容 -->
+    <div class="card p-6">
+
+        <!-- 分頁 1：權限切換 -->
+        <section id="tab-permissions" class="tab-content">
+            <h2 class="text-lg font-bold text-slate-900 mb-3">權限矩陣</h2>
+            <div class="alert-warn mb-4">
+                ⚠️ 此分頁的 toggle 目前為設定預覽，實際權限仍由 <code class="bg-yellow-100 px-1 rounded">v_squad_scope</code> function 決定（permission_matrix 表已建好但暫未接入 scope function，待後續 change 收斂）
+            </div>
+            <div id="permissionsTable">載入中...</div>
+        </section>
+
+        <!-- 分頁 2：計分規則 -->
+        <section id="tab-rules" class="tab-content hidden">
+            <h2 class="text-lg font-bold text-slate-900 mb-3">計分規則</h2>
+            <div class="alert-info mb-4">
+                💡 黃色背景的 row 代表 <code class="bg-blue-100 px-1 rounded">rule_value = NULL</code>（規則未設定 / 已停用）
+            </div>
+            <div id="rulesTable">載入中...</div>
+        </section>
+
+        <!-- 分頁 3：名單管理 -->
+        <section id="tab-roster" class="tab-content hidden">
+            <h2 class="text-lg font-bold text-slate-900 mb-3">名單管理</h2>
+            <div class="alert-info mb-4">
+                💡 此頁僅可調整 role 與停用狀態，不提供新增/刪除 member（由 Supabase 直接管理）
+            </div>
+            <div class="mb-3">
+                <input type="text" id="rosterSearch" class="custom-input w-full px-4 py-2" placeholder="搜尋姓名 / 小隊編號 / 大隊...">
+            </div>
+            <div id="rosterTable" class="overflow-x-auto">載入中...</div>
+        </section>
+
+        <!-- 分頁 4：Admin 管理 -->
+        <section id="tab-admins" class="tab-content hidden">
+            <h2 class="text-lg font-bold text-slate-900 mb-3">Admin 管理</h2>
+
+            <div class="alert-warn mb-4">
+                ⚠️ 自鎖規則：不能停用自己；至少要保留 1 個 active admin
+            </div>
+
+            <div id="adminsTable" class="mb-6">載入中...</div>
+
+            <details class="card p-4">
+                <summary class="font-bold text-slate-700 cursor-pointer">➕ 新增 Admin</summary>
+                <form id="createAdminForm" class="mt-4 space-y-3">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Admin ID（建議用 email）</label>
+                        <input type="text" id="newAdminId" class="custom-input w-full px-3 py-2" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">姓名</label>
+                        <input type="text" id="newAdminName" class="custom-input w-full px-3 py-2" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">初始密碼</label>
+                        <input type="password" id="newAdminPassword" class="custom-input w-full px-3 py-2" required>
+                    </div>
+                    <button type="submit" class="btn-primary">建立</button>
+                </form>
+            </details>
+        </section>
+
+    </div>
+</div>
+
+<script>
+(function () {
+
+    // ============================================================
+    // Role 中文標籤（DB 仍存英文值，僅顯示用）
+    // ============================================================
+    const ROLE_LABELS = {
+        member:       '隊員',
+        squad_leader: '小隊長',
+        team_leader:  '大隊長',
+        auditor:      '審計官',
+        admin:        '管理員',
+        executive:    '顧問'
+    };
+    function roleLabel(r) { return ROLE_LABELS[r] || r; }
+
+    // ============================================================
+    // Toast 通知
+    // ============================================================
+    function toast(msg, type = 'info') {
+        const div = document.createElement('div');
+        const cls = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+        div.className = `toast ${cls}`;
+        div.textContent = msg;
+        document.getElementById('toastContainer').appendChild(div);
+        setTimeout(() => div.classList.add('show'), 10);
+        setTimeout(() => {
+            div.classList.remove('show');
+            setTimeout(() => div.remove(), 300);
+        }, 3500);
+    }
+
+    // ============================================================
+    // 螢幕切換
+    // ============================================================
+    function showLoginScreen() {
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('mainScreen').classList.add('hidden');
+    }
+
+    function showMainScreen() {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('mainScreen').classList.remove('hidden');
+        const session = window.adminAPI.getSession();
+        document.getElementById('currentAdminName').textContent = session.name + ' (' + session.admin_id + ')';
+        // 預設載入第一個分頁
+        switchTab('permissions');
+    }
+
+    // ============================================================
+    // 登入 / 登出
+    // ============================================================
+    document.getElementById('loginForm').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        const errBox = document.getElementById('loginError');
+        const btn = document.getElementById('loginBtn');
+        errBox.classList.add('hidden');
+        btn.disabled = true;
+        btn.textContent = '登入中...';
+
+        const adminId = document.getElementById('loginAdminId').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const result = await window.adminAPI.login(adminId, password);
+
+        btn.disabled = false;
+        btn.textContent = '登入';
+
+        if (!result.success) {
+            errBox.textContent = result.error || '登入失敗';
+            errBox.classList.remove('hidden');
+            return;
+        }
+        document.getElementById('loginPassword').value = '';
+        showMainScreen();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+        window.adminAPI.logout();
+        showLoginScreen();
+    });
+
+    // ============================================================
+    // 分頁切換
+    // ============================================================
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+        document.querySelectorAll('.tab-content').forEach(s => {
+            s.classList.toggle('hidden', s.id !== 'tab-' + tabName);
+        });
+        // lazy load 對應分頁資料
+        if (tabName === 'permissions') loadPermissions();
+        else if (tabName === 'rules') loadRules();
+        else if (tabName === 'roster') loadRoster();
+        else if (tabName === 'admins') loadAdmins();
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // ============================================================
+    // 分頁 1：權限矩陣
+    // ============================================================
+    async function loadPermissions() {
+        const box = document.getElementById('permissionsTable');
+        box.textContent = '載入中...';
+        try {
+            const rows = await window.adminAPI.listPermissions();
+            if (rows.length === 0) {
+                box.innerHTML = '<div class="alert-warn">尚無資料</div>';
+                return;
+            }
+            const SCOPE_OPTIONS = ['', 'self', 'squad', 'team', 'all', 'assigned'];
+            let html = '<table class="data-table"><thead><tr>'
+                + '<th>角色</th><th>Capability</th><th>啟用</th><th>Scope</th><th>操作</th></tr></thead><tbody>';
+            rows.forEach((r, i) => {
+                html += `<tr data-idx="${i}">
+                    <td>${roleLabel(r.role)} <code class="bg-slate-100 px-1 ml-1 rounded text-xs text-slate-500">${r.role}</code></td>
+                    <td>${r.capability}</td>
+                    <td><input type="checkbox" class="w-4 h-4" ${r.is_enabled ? 'checked' : ''} data-field="enabled"></td>
+                    <td><select class="custom-input px-2 py-1" data-field="scope">
+                        ${SCOPE_OPTIONS.map(s => `<option value="${s}" ${r.scope === s || (s === '' && !r.scope) ? 'selected' : ''}>${s || '(NULL)'}</option>`).join('')}
+                    </select></td>
+                    <td><button class="btn-primary" style="padding:.25rem .75rem;font-size:.75rem" data-action="save"
+                        data-role="${r.role}" data-cap="${r.capability}">儲存</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            box.innerHTML = html;
+
+            box.querySelectorAll('button[data-action="save"]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const tr = btn.closest('tr');
+                    const enabled = tr.querySelector('[data-field="enabled"]').checked;
+                    const scope = tr.querySelector('[data-field="scope"]').value;
+                    btn.disabled = true;
+                    btn.textContent = '...';
+                    try {
+                        await window.adminAPI.updatePermission(btn.dataset.role, btn.dataset.cap, enabled, scope || null);
+                        toast('已儲存', 'success');
+                    } catch (e) {
+                        toast(e.message, 'error');
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = '儲存';
+                    }
+                });
+            });
+        } catch (e) {
+            box.innerHTML = `<div class="alert-error">載入失敗：${e.message}</div>`;
+        }
+    }
+
+    // ============================================================
+    // 分頁 2：計分規則
+    // ============================================================
+    async function loadRules() {
+        const box = document.getElementById('rulesTable');
+        box.textContent = '載入中...';
+        try {
+            const rows = await window.adminAPI.listScoringRules();
+            if (rows.length === 0) {
+                box.innerHTML = '<div class="alert-warn">尚無資料</div>';
+                return;
+            }
+            let html = '<table class="data-table"><thead><tr>'
+                + '<th>Category</th><th>Rule Key</th><th>Value (JSON)</th><th>操作</th></tr></thead><tbody>';
+            rows.forEach(r => {
+                const isNull = r.rule_value === null || r.rule_value === undefined;
+                const valStr = isNull ? '' : JSON.stringify(r.rule_value);
+                html += `<tr class="${isNull ? 'row-warning' : ''}">
+                    <td>${r.category || '-'}</td>
+                    <td><code class="bg-slate-100 px-2 py-0.5 rounded">${r.rule_key}</code></td>
+                    <td><textarea class="custom-input w-full px-2 py-1 font-mono text-xs"
+                        rows="2" data-key="${r.rule_key}">${valStr}</textarea></td>
+                    <td><button class="btn-primary" style="padding:.25rem .75rem;font-size:.75rem" data-action="save"
+                        data-key="${r.rule_key}">儲存</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            box.innerHTML = html;
+
+            box.querySelectorAll('button[data-action="save"]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const ta = box.querySelector(`textarea[data-key="${btn.dataset.key}"]`);
+                    const raw = ta.value.trim();
+                    let parsed = null;
+                    if (raw !== '') {
+                        try { parsed = JSON.parse(raw); }
+                        catch (e) { toast('JSON 格式錯誤：' + e.message, 'error'); return; }
+                    }
+                    btn.disabled = true;
+                    btn.textContent = '...';
+                    try {
+                        await window.adminAPI.updateScoringRule(btn.dataset.key, parsed);
+                        toast('已儲存', 'success');
+                        loadRules(); // refresh 黃底狀態
+                    } catch (e) {
+                        toast(e.message, 'error');
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = '儲存';
+                    }
+                });
+            });
+        } catch (e) {
+            box.innerHTML = `<div class="alert-error">載入失敗：${e.message}</div>`;
+        }
+    }
+
+    // ============================================================
+    // 分頁 3：名單管理
+    // ============================================================
+    let _allMembers = [];
+
+    async function loadRoster() {
+        const box = document.getElementById('rosterTable');
+        box.textContent = '載入中...';
+        try {
+            _allMembers = await window.adminAPI.listMembersFull();
+            renderRoster(_allMembers);
+        } catch (e) {
+            box.innerHTML = `<div class="alert-error">載入失敗：${e.message}</div>`;
+        }
+    }
+
+    function renderRoster(rows) {
+        const box = document.getElementById('rosterTable');
+        if (rows.length === 0) {
+            box.innerHTML = '<div class="alert-warn">無符合資料</div>';
+            return;
+        }
+        const ROLES = ['member', 'squad_leader', 'team_leader', 'auditor', 'admin', 'executive'];
+        let html = '<table class="data-table"><thead><tr>'
+            + '<th>大隊</th><th>小隊</th><th>姓名</th><th>角色</th><th>啟用</th><th>操作</th></tr></thead><tbody>';
+        const ROLE_ROW_CLASS = {
+            team_leader:  'row-team-leader',
+            squad_leader: 'row-squad-leader',
+            auditor:      'row-auditor',
+            executive:    'row-executive'
+        };
+        rows.forEach(m => {
+            const rowCls = ROLE_ROW_CLASS[m.role] || '';
+            html += `<tr class="${rowCls}">
+                <td>${m.team_code || ''} ${m.team_name || ''}</td>
+                <td>${m.squad_code || ''} ${m.squad_name || ''}</td>
+                <td>${m.name}</td>
+                <td><select class="custom-input px-2 py-1" data-field="role">
+                    ${ROLES.map(r => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${roleLabel(r)}</option>`).join('')}
+                </select></td>
+                <td><input type="checkbox" class="w-4 h-4" ${m.is_active ? 'checked' : ''} data-field="active"></td>
+                <td><button class="btn-primary" style="padding:.25rem .75rem;font-size:.75rem" data-action="save"
+                    data-id="${m.id}">儲存</button></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        box.innerHTML = html;
+
+        box.querySelectorAll('button[data-action="save"]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const tr = btn.closest('tr');
+                const role = tr.querySelector('[data-field="role"]').value;
+                const active = tr.querySelector('[data-field="active"]').checked;
+                btn.disabled = true;
+                btn.textContent = '...';
+                try {
+                    await window.adminAPI.setMemberRole(btn.dataset.id, role);
+                    await window.adminAPI.setMemberActive(btn.dataset.id, active);
+                    toast('已儲存', 'success');
+                } catch (e) {
+                    toast(e.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = '儲存';
+                }
+            });
+        });
+    }
+
+    document.getElementById('rosterSearch').addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        if (!q) { renderRoster(_allMembers); return; }
+        const filtered = _allMembers.filter(m =>
+            (m.name && m.name.toLowerCase().includes(q)) ||
+            (m.squad_code && m.squad_code.toLowerCase().includes(q)) ||
+            (m.squad_name && m.squad_name.toLowerCase().includes(q)) ||
+            (m.team_name && m.team_name.toLowerCase().includes(q)) ||
+            (m.team_code && m.team_code.toLowerCase().includes(q))
+        );
+        renderRoster(filtered);
+    });
+
+    // ============================================================
+    // 分頁 4：Admin 管理
+    // ============================================================
+    async function loadAdmins() {
+        const box = document.getElementById('adminsTable');
+        box.textContent = '載入中...';
+        try {
+            const rows = await window.adminAPI.listAdmins();
+            const session = window.adminAPI.getSession();
+            if (rows.length === 0) {
+                box.innerHTML = '<div class="alert-warn">尚無資料</div>';
+                return;
+            }
+            let html = '<table class="data-table"><thead><tr>'
+                + '<th>Admin ID</th><th>姓名</th><th>啟用</th><th>最後登入</th><th>建立</th><th>操作</th></tr></thead><tbody>';
+            rows.forEach(r => {
+                const isSelf = r.admin_id === session.admin_id;
+                const lastLogin = r.last_login_at ? new Date(r.last_login_at).toLocaleString('zh-TW') : '-';
+                const createdAt = r.created_at ? new Date(r.created_at).toLocaleString('zh-TW') : '-';
+                html += `<tr>
+                    <td><code class="bg-slate-100 px-2 py-0.5 rounded">${r.admin_id}</code>${isSelf ? ' <span class="text-xs text-indigo-600">(自己)</span>' : ''}</td>
+                    <td>${r.name}</td>
+                    <td>${r.is_active ? '✅' : '❌'}</td>
+                    <td class="text-xs text-slate-500">${lastLogin}</td>
+                    <td class="text-xs text-slate-500">${createdAt}</td>
+                    <td>
+                        <button class="btn-secondary" style="font-size:.75rem" data-action="changepw" data-id="${r.admin_id}">改密碼</button>
+                        <button class="btn-danger" style="font-size:.75rem" data-action="toggle"
+                            data-id="${r.admin_id}" data-active="${r.is_active}"
+                            ${isSelf ? 'disabled' : ''}>${r.is_active ? '停用' : '啟用'}</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            box.innerHTML = html;
+
+            box.querySelectorAll('button[data-action="toggle"]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const targetActive = btn.dataset.active !== 'true';
+                    if (!confirm(`確定要${targetActive ? '啟用' : '停用'} ${btn.dataset.id} ?`)) return;
+                    try {
+                        await window.adminAPI.setAdminActive(btn.dataset.id, targetActive);
+                        toast('已更新', 'success');
+                        loadAdmins();
+                    } catch (e) {
+                        toast(e.message, 'error');
+                    }
+                });
+            });
+
+            box.querySelectorAll('button[data-action="changepw"]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const newPw = prompt(`為 ${btn.dataset.id} 設定新密碼：`);
+                    if (!newPw) return;
+                    try {
+                        await window.adminAPI.changePassword(btn.dataset.id, newPw);
+                        toast('密碼已更新', 'success');
+                    } catch (e) {
+                        toast(e.message, 'error');
+                    }
+                });
+            });
+        } catch (e) {
+            box.innerHTML = `<div class="alert-error">載入失敗：${e.message}</div>`;
+        }
+    }
+
+    document.getElementById('createAdminForm').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        const id = document.getElementById('newAdminId').value.trim();
+        const name = document.getElementById('newAdminName').value.trim();
+        const pw = document.getElementById('newAdminPassword').value;
+        try {
+            await window.adminAPI.createAdmin(id, name, pw);
+            toast('已建立 ' + id, 'success');
+            document.getElementById('newAdminId').value = '';
+            document.getElementById('newAdminName').value = '';
+            document.getElementById('newAdminPassword').value = '';
+            loadAdmins();
+        } catch (e) {
+            toast(e.message, 'error');
+        }
+    });
+
+    // ============================================================
+    // 啟動：判斷是否已登入
+    // ============================================================
+    if (window.adminAPI.getSession()) {
+        showMainScreen();
+    } else {
+        showLoginScreen();
+    }
+
+})();
+</script>
+</body>
+</html>

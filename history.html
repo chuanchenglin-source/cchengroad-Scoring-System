@@ -171,10 +171,10 @@
     </main>
 
     <script>
+        // 2026-04-25 對齊主程式設計師 0425：members.id 改 TEXT，URL params 直接帶 id
         const campaignConfig = {
             startDate: "2026-05-03",
             user: {
-                memberId: "<?= user.memberId ?>",   // Supabase members.id
                 id:       typeof google !== 'undefined' ? "<?= user.id ?>" : "guest_001",
                 name:     typeof google !== 'undefined' ? "<?= user.name ?>" : "航海英雄"
             },
@@ -265,9 +265,9 @@
         async function fetchHistory() {
             document.getElementById('loadingOverlay').classList.remove('hidden');
             try {
-                const memberId = parseInt(campaignConfig.user.memberId);
-                if (!memberId) {
-                    // 本機模擬（未登入）
+                const memberId = (campaignConfig.user.id || '').trim();
+                // memberId 為空（如 guest_001 本機模擬）→ 用 mock；否則查 Supabase
+                if (!memberId || memberId === 'guest_001') {
                     allHistoryData = generateMockData();
                 } else {
                     // getPersonalHistory 已回傳扁平化資料：

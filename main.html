@@ -588,12 +588,13 @@
 
     <script>
         // 設定親證班日期範圍
+        // 2026-04-25 對齊主程式設計師 0425：
+        //   - members.id 改 TEXT，URL params 直接帶 id，不再需要 memberId (BIGINT)
+        //   - 日期選擇器改為「當週 7 天」聚焦使用者
         const campaignConfig = {
-            startDate: "2026-05-03",
-            durationDays: 7,
+            startDate: "2026-05-03",  // 活動第一天（週日）
             user: {
-                memberId: "<?= user.memberId ?>",    // Supabase members.id（BIGINT）— 提交時需要
-                id:       "<?= user.id ?>",           // member_code（如 T011_周子維_嘉家久）
+                id:       "<?= user.id ?>",       // members.id, e.g. T011_周子維_嘉家久
                 name:     "<?= user.name ?>",
                 team:     "<?= user.team ?>",
                 teamCode: "<?= user.teamCode ?>"
@@ -663,15 +664,28 @@
                 .replace(/[。．]/g, '.');
         }
 
-        // 初始化日期選取器
+        // 初始化日期選取器：依今天算當週的週日，渲染當週 7 天（對齊主路線 0425）
         function initDatePicker() {
             const picker = document.getElementById('datePicker');
-            const start = new Date(campaignConfig.startDate);
+            const [sy, sm, sd] = campaignConfig.startDate.split('-').map(Number);
+            const campaignStart = new Date(sy, sm - 1, sd);  // 活動第一天（週日）
 
-            for (let i = 0; i < campaignConfig.durationDays; i++) {
-                const d = new Date(start);
-                d.setDate(start.getDate() + i);
-                const dateStr = d.toISOString().split('T')[0];
+            // 算今天是第幾週（0-based）
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diffDays    = Math.floor((today - campaignStart) / (1000 * 60 * 60 * 24));
+            const currentWeek = Math.max(0, Math.floor(diffDays / 7));
+
+            // 當週週日（活動開始前先 fallback 到第 1 週）
+            const weekStart = new Date(sy, sm - 1, sd + currentWeek * 7);
+
+            for (let i = 0; i < 7; i++) {
+                // 用本地時間算 yyyy-mm-dd 避免 toISOString 時區漂移
+                const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+                const y  = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const dateStr = `${y}-${mm}-${dd}`;
 
                 const btn = document.createElement('div');
                 btn.id = `date-${dateStr}`;
@@ -682,10 +696,10 @@
             }
         }
 
-        // 從 Supabase 獲取已填寫過的日期
+        // 從 Supabase 獲取已填寫過的日期（memberId 為 TEXT）
         async function fetchUserStatus() {
             try {
-                const memberId = parseInt(campaignConfig.user.memberId);
+                const memberId = (campaignConfig.user.id || '').trim();
                 if (!memberId) return;
                 completedDates = await window.scoringAPI.getCompletedDates(memberId);
                 updateDateStyles();
@@ -792,7 +806,7 @@
             e.preventDefault();
             if (!selectedDate) return alert("請先選取日期！");
 
-            const memberId = parseInt(campaignConfig.user.memberId);
+            const memberId = (campaignConfig.user.id || '').trim();
             if (!memberId) {
                 alert("身份識別失敗，請回到登入頁重新登入");
                 return;
@@ -876,7 +890,6 @@
                 google.script.run.withSuccessHandler(function(url) {
                     const params = [
                         `page=history`,
-                        `memberId=${encodeURIComponent(user.memberId)}`,
                         `id=${encodeURIComponent(user.id)}`,
                         `name=${encodeURIComponent(user.name)}`,
                         `team=${encodeURIComponent(user.team)}`,

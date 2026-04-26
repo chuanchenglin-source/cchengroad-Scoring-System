@@ -30,30 +30,18 @@
          * 取得所有成員（用於 Index 頁面的姓名下拉選單）
          */
         async getMemberList() {
+            // 依 squad_code (T010, T011, ...) 排序，同小隊內再依姓名
+            // 對齊主程式設計師 0425 — 隊員列表照大隊→小隊→姓名展開
             const { data, error } = await window.sb
                 .from('members_public')
                 .select('*')
-                .order('name');
+                .order('squad_code', { ascending: true })
+                .order('name', { ascending: true });
             if (error) {
                 console.error('[getMemberList]', error);
                 return [];
             }
             return data || [];
-        },
-
-        /**
-         * 驗證登入（姓名 + PIN）
-         */
-        async authenticate(name, pin) {
-            const { data, error } = await window.sb.rpc('authenticate_member', {
-                p_name: name,
-                p_pin: pin
-            });
-            if (error) {
-                console.error('[authenticate]', error);
-                return null;
-            }
-            return (data && data.length > 0) ? data[0] : null;
         },
 
         /**
@@ -96,8 +84,13 @@
          * }
          */
         async saveReport(payload) {
+            // memberId 為 TEXT 格式 <squad_code>_<name>_<team_name>
+            const memberId = (payload.memberId || '').toString().trim();
+            if (!memberId) {
+                return { success: false, error: '缺少 memberId' };
+            }
             const { data, error } = await window.sb.rpc('save_daily_report', {
-                p_member_id:    payload.memberId,
+                p_member_id:    memberId,
                 p_activity_id:  payload.activityId || 1,
                 p_report_date:  payload.reportDate,
                 p_total_score:  payload.totalScore || 0,
@@ -115,10 +108,12 @@
          * 取得某使用者已填表的日期（供填分頁「已完成」標記）
          */
         async getCompletedDates(memberId) {
+            const id = (memberId || '').toString().trim();
+            if (!id) return [];
             const { data, error } = await window.sb
                 .from('daily_reports')
                 .select('report_date')
-                .eq('member_id', memberId);
+                .eq('member_id', id);
             if (error) {
                 console.error('[getCompletedDates]', error);
                 return [];
@@ -138,6 +133,8 @@
          *      { date, score, remark, box1_score, box1_content, ..., box40_score, box40_content }
          */
         async getPersonalHistory(memberId) {
+            const id = (memberId || '').toString().trim();
+            if (!id) return [];
             const { data, error } = await window.sb
                 .from('daily_reports')
                 .select(`
@@ -150,7 +147,7 @@
                         )
                     )
                 `)
-                .eq('member_id', memberId)
+                .eq('member_id', id)
                 .order('submitted_at', { ascending: false });
 
             if (error) {
@@ -202,6 +199,248 @@
 
                 return flat;
             });
+        }
+    };
+
+    // =====================================================
+    // adminAPI：管理後台專用介面
+    // - 認證：sessionStorage 存 {admin_id, password}，每次 RPC 重驗
+    // - 與 scoringAPI 完全區隔，scoringAPI 不含任何 admin method
+    // =====================================================
+    const SESSION_KEY = 'cchg_admin_session';
+
+    function _readSession() {
+        try {
+            const raw = sessionStorage.getItem(SESSION_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function _requireSession() {
+        const s = _readSession();
+        if (!s || !s.admin_id || !s.password) {
+            throw new Error('未登入');
+        }
+        return s;
+    }
+
+    window.adminAPI = {
+
+        /**
+         * 登入：呼叫 admin_login RPC 驗證，成功則寫 sessionStorage
+         * 回傳 { success, admin_id, name, error }
+         */
+        async login(adminId, password) {
+            const id = (adminId || '').toString().trim();
+            const pw = (password || '').toString();
+            if (!id || !pw) {
+                return { success: false, error: '請輸入帳號與密碼' };
+            }
+            const { data, error } = await window.sb.rpc('admin_login', {
+                p_admin_id: id,
+                p_password: pw
+            });
+            if (error) {
+                console.error('[adminAPI.login]', error);
+                return { success: false, error: error.message || String(error) };
+            }
+            if (!data || data.length === 0) {
+                return { success: false, error: '帳號或密碼錯誤，或帳號已停用' };
+            }
+            const row = data[0];
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+                admin_id: row.admin_id,
+                name: row.name,
+                password: pw
+            }));
+            return { success: true, admin_id: row.admin_id, name: row.name };
+        },
+
+        /**
+         * 登出：清 sessionStorage
+         */
+        logout() {
+            sessionStorage.removeItem(SESSION_KEY);
+        },
+
+        /**
+         * 取得目前 session（不含密碼）
+         */
+        getSession() {
+            const s = _readSession();
+            if (!s) return null;
+            return { admin_id: s.admin_id, name: s.name };
+        },
+
+        // -----------------------------------------------------
+        // Admin 自管：listAdmins / createAdmin / setAdminActive / changePassword
+        // -----------------------------------------------------
+
+        async listAdmins() {
+            const s = _requireSession();
+            const { data, error } = await window.sb.rpc('admin_list_admins', {
+                p_acting_admin_id: s.admin_id,
+                p_acting_password: s.password
+            });
+            if (error) throw new Error(error.message || String(error));
+            return data || [];
+        },
+
+        async createAdmin(newAdminId, newName, newPassword) {
+            const s = _requireSession();
+            const { data, error } = await window.sb.rpc('admin_create', {
+                p_acting_admin_id: s.admin_id,
+                p_acting_password: s.password,
+                p_new_admin_id: (newAdminId || '').toString().trim(),
+                p_new_name: (newName || '').toString().trim(),
+                p_new_password: (newPassword || '').toString()
+            });
+            if (error) throw new Error(error.message || String(error));
+            return data;
+        },
+
+        async setAdminActive(targetAdminId, setActive) {
+            const s = _requireSession();
+            const { data, error } = await window.sb.rpc('admin_set_active', {
+                p_acting_admin_id: s.admin_id,
+                p_acting_password: s.password,
+                p_target_admin_id: targetAdminId,
+                p_set_active: !!setActive
+            });
+            if (error) throw new Error(error.message || String(error));
+            return data;
+        },
+
+        async changePassword(targetAdminId, newPassword) {
+            const s = _requireSession();
+            const { data, error } = await window.sb.rpc('admin_change_password', {
+                p_acting_admin_id: s.admin_id,
+                p_acting_password: s.password,
+                p_target_admin_id: targetAdminId,
+                p_new_password: (newPassword || '').toString()
+            });
+            if (error) throw new Error(error.message || String(error));
+            // 若改的是自己的密碼，更新 sessionStorage
+            if (targetAdminId === s.admin_id) {
+                sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+                    admin_id: s.admin_id,
+                    name: s.name,
+                    password: newPassword
+                }));
+            }
+            return data;
+        },
+
+        // -----------------------------------------------------
+        // 權限矩陣：listPermissions / updatePermission
+        // -----------------------------------------------------
+
+        async listPermissions() {
+            _requireSession();
+            const { data, error } = await window.sb
+                .from('permission_matrix')
+                .select('*')
+                .order('role')
+                .order('capability');
+            if (error) throw new Error(error.message || String(error));
+            return data || [];
+        },
+
+        async updatePermission(role, capability, isEnabled, scope) {
+            const s = _requireSession();
+            const { data, error } = await window.sb.rpc('admin_update_permission', {
+                p_acting_admin_id: s.admin_id,
+                p_acting_password: s.password,
+                p_role: role,
+                p_capability: capability,
+                p_is_enabled: !!isEnabled,
+                p_scope: scope || null
+            });
+            if (error) throw new Error(error.message || String(error));
+            return data;
+        },
+
+        // -----------------------------------------------------
+        // 計分規則：listScoringRules / updateScoringRule
+        // -----------------------------------------------------
+
+        async listScoringRules() {
+            _requireSession();
+            const { data, error } = await window.sb
+                .from('scoring_rules')
+                .select('*')
+                .order('category')
+                .order('rule_key');
+            if (error) throw new Error(error.message || String(error));
+            return data || [];
+        },
+
+        async updateScoringRule(ruleKey, ruleValue) {
+            const s = _requireSession();
+            const { data, error } = await window.sb.rpc('admin_update_scoring_rule', {
+                p_acting_admin_id: s.admin_id,
+                p_acting_password: s.password,
+                p_rule_key: ruleKey,
+                p_rule_value: ruleValue
+            });
+            if (error) throw new Error(error.message || String(error));
+            return data;
+        },
+
+        // -----------------------------------------------------
+        // 名單管理：listMembersFull / setMemberRole / setMemberActive
+        // -----------------------------------------------------
+
+        async listMembersFull() {
+            _requireSession();
+            const { data, error } = await window.sb
+                .from('members')
+                .select(`
+                    id, name, role, is_active, mentor,
+                    squad:squads (squad_code, squad_name, squad_leader_name,
+                        team:teams (team_code, team_name))
+                `)
+                .order('id');
+            if (error) throw new Error(error.message || String(error));
+            // 扁平化方便 UI 渲染
+            return (data || []).map(m => ({
+                id: m.id,
+                name: m.name,
+                role: m.role,
+                is_active: m.is_active,
+                mentor: m.mentor,
+                squad_code: m.squad && m.squad.squad_code,
+                squad_name: m.squad && m.squad.squad_name,
+                squad_leader_name: m.squad && m.squad.squad_leader_name,
+                team_code: m.squad && m.squad.team && m.squad.team.team_code,
+                team_name: m.squad && m.squad.team && m.squad.team.team_name
+            }));
+        },
+
+        async setMemberRole(memberId, newRole) {
+            const s = _requireSession();
+            const { data, error } = await window.sb.rpc('admin_set_member_role', {
+                p_acting_admin_id: s.admin_id,
+                p_acting_password: s.password,
+                p_member_id: memberId,
+                p_new_role: newRole
+            });
+            if (error) throw new Error(error.message || String(error));
+            return data;
+        },
+
+        async setMemberActive(memberId, isActive) {
+            const s = _requireSession();
+            const { data, error } = await window.sb.rpc('admin_set_member_active', {
+                p_acting_admin_id: s.admin_id,
+                p_acting_password: s.password,
+                p_member_id: memberId,
+                p_is_active: !!isActive
+            });
+            if (error) throw new Error(error.message || String(error));
+            return data;
         }
     };
 

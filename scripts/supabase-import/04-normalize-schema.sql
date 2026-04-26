@@ -9,6 +9,8 @@
 --
 -- 產出時間：2026-04-20
 -- 變更紀錄：openspec/changes/normalize-daily-report-schema/
+-- 2026-04-25 修改：audited_by 由 BIGINT 改 TEXT（對應 members.id 改 TEXT）
+--                 變更紀錄：openspec/changes/align-with-main-dev-0425/
 -- =====================================================
 
 BEGIN;
@@ -75,7 +77,7 @@ CREATE TABLE daily_report_items (
     content_text        TEXT,                               -- 純文字類 / 混合類填此欄
     audit_status        TEXT        NOT NULL DEFAULT 'pending'
                                     CHECK (audit_status IN ('pending', 'approved', 'rejected')),
-    audited_by          BIGINT      REFERENCES members(id),
+    audited_by          TEXT        REFERENCES members(id),
     audited_at          TIMESTAMPTZ,
     audit_notes         TEXT,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),

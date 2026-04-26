@@ -1,0 +1,50 @@
+-- =====================================================
+-- bootstrap-admin.sql.example  ←  範本檔，跟著 git
+--
+-- ⚠️  使用流程：
+--     1. 複製本檔為 scripts/supabase-import/bootstrap-admin.sql
+--        （bootstrap-admin.sql 已被 .gitignore 排除，不會進 git）
+--     2. 把下面的 '__REPLACE_ME__' 改為你想要的真實密碼（明文）
+--     3. 用 Supabase Dashboard SQL Editor 或 MCP execute_sql 執行一次
+--     4. 完成後第一個 admin 就位，可進 ?page=Admin 用 admin_id + 密碼登入
+--
+-- 安全提醒：
+--   - bootstrap-admin.sql 含明文密碼，**絕不可** commit 進 git
+--   - 跑完後可考慮直接刪除 bootstrap-admin.sql 檔案（密碼已 hash 進 DB，不需保留檔案）
+--   - 如果忘記密碼，跑「忘記密碼救援 SQL」（本檔最後）
+--
+-- 適用 change：add-admin-backend
+-- 對應 spec：openspec/changes/add-admin-backend/specs/admin-credentials/spec.md
+--
+-- 前置條件：13-create-admin-credentials.sql 已執行（admin_credentials 表存在、pgcrypto enabled）
+-- =====================================================
+
+
+-- ========== Bootstrap：建立第一個 admin ==========
+
+INSERT INTO admin_credentials (admin_id, name, password_hash, is_active)
+VALUES (
+    'chuanchenglin@gmail.com',
+    '主程式設計師',
+    crypt('5195', gen_salt('bf')),  -- ← 把 __REPLACE_ME__ 改為真實密碼
+    true
+);
+
+-- 驗證：應回 1 筆
+SELECT admin_id, name, is_active, created_at
+  FROM admin_credentials
+ WHERE admin_id = 'chuanchenglin@gmail.com';
+
+
+-- =====================================================
+-- 忘記密碼救援 SQL（保留作參考；不會被執行）
+-- =====================================================
+-- 如果 admin 忘記密碼且沒有其他 active admin 可協助重設，
+-- 直接在 Supabase SQL Editor（service_role 身份）跑：
+--
+--   UPDATE admin_credentials
+--      SET password_hash = crypt('新密碼明文', gen_salt('bf'))
+--    WHERE admin_id = 'chuanchenglin@gmail.com';
+--
+-- 跑完後用新密碼登入 ?page=Admin。
+-- =====================================================

@@ -4,7 +4,7 @@
 --
 -- 呼叫方式（前端 supabase-js）：
 --   await sb.rpc('save_daily_report', {
---     p_member_id: 123,
+--     p_member_id: 'T011_周子維_嘉家久',
 --     p_activity_id: 1,
 --     p_report_date: '2026-05-03',
 --     p_total_score: 250,
@@ -19,12 +19,17 @@
 -- 回傳：新建立的 daily_reports.id (BIGINT)
 --
 -- 產出時間：2026-04-20
+-- 2026-04-25 修改（change：align-with-main-dev-0425）：
+--   - p_member_id 由 BIGINT 改 TEXT（對應 members.id 改 TEXT）
+--   - 新增 member 存在性檢查並 raise exception
 -- =====================================================
 
+-- 拆掉所有可能殘留的舊簽章（含 BIGINT 版本以防止重跑時 ambiguous）
 DROP FUNCTION IF EXISTS save_daily_report(BIGINT, BIGINT, DATE, INTEGER, TEXT, JSONB);
+DROP FUNCTION IF EXISTS save_daily_report(TEXT,   BIGINT, DATE, INTEGER, TEXT, JSONB);
 
 CREATE OR REPLACE FUNCTION save_daily_report(
-    p_member_id    BIGINT,
+    p_member_id    TEXT,
     p_activity_id  BIGINT,
     p_report_date  DATE,
     p_total_score  INTEGER,
@@ -41,9 +46,10 @@ DECLARE
     v_item      JSONB;
     v_item_id   BIGINT;
     v_option_id BIGINT;
+    v_member_exists BOOLEAN;
 BEGIN
     -- 基本驗證
-    IF p_member_id IS NULL THEN
+    IF p_member_id IS NULL OR length(trim(p_member_id)) = 0 THEN
         RAISE EXCEPTION '缺少 member_id';
     END IF;
     IF p_report_date IS NULL THEN
@@ -51,6 +57,13 @@ BEGIN
     END IF;
     IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' THEN
         RAISE EXCEPTION 'p_items 必須是 JSONB array';
+    END IF;
+
+    -- 驗證 member_id 存在於 members 表（明確錯誤訊息，避免 FK 違反時的隱晦錯誤）
+    SELECT EXISTS (SELECT 1 FROM members WHERE id = p_member_id)
+      INTO v_member_exists;
+    IF NOT v_member_exists THEN
+        RAISE EXCEPTION '找不到 member_id: %', p_member_id;
     END IF;
 
     -- 1. 寫入 daily_reports 主紀錄
@@ -100,8 +113,8 @@ END;
 $$;
 
 -- 授權 anon 與 authenticated 角色可呼叫
-GRANT EXECUTE ON FUNCTION save_daily_report(BIGINT, BIGINT, DATE, INTEGER, TEXT, JSONB)
+GRANT EXECUTE ON FUNCTION save_daily_report(TEXT, BIGINT, DATE, INTEGER, TEXT, JSONB)
     TO anon, authenticated;
 
 COMMENT ON FUNCTION save_daily_report IS
-    'Atomic 寫入一筆 daily_report + N 筆 daily_report_items + M 筆 daily_report_item_options。任一失敗整筆 rollback。回傳新 daily_reports.id。';
+    'Atomic 寫入一筆 daily_report + N 筆 daily_report_items + M 筆 daily_report_item_options。任一失敗整筆 rollback。回傳新 daily_reports.id。p_member_id 為 TEXT 格式 <squad_code>_<name>_<team_name>，會驗證存在於 members 表。';

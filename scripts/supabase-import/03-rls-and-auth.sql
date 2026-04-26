@@ -3,6 +3,20 @@
 -- 產出時間：2026-04-20
 -- 用途：讓前端（anon key）能正常運作 + 準備 PIN 登入機制
 -- Demo 階段：policy 較寬鬆，正式上線前會再收緊
+--
+-- ⚠️  2026-04-25 SUPERSEDED 通知（change：align-with-main-dev-0425）⚠️
+--   主辦方已決議不使用 PIN 碼登入。
+--   本檔內的 authenticate_member function 與 members.pin_code 相關 RLS
+--   已於 12-remove-pin-auth.sql 拆除。
+--   Fresh install 時請按以下順序執行：
+--     03 (本檔) → 04 → 04b → 05 → 06 → 07 → 08
+--       → 09 (拆並重建 teams/squads)
+--       → 10 (重建 members 為 TEXT id、無 pin_code)
+--       → 11 (匯入 360+ 真名單)
+--       → 12 (拆 PIN 殘餘)
+--       → 重跑 05 (save_daily_report 改 TEXT 簽章)
+--   09-10 會 DROP 本檔建立的 authenticate_member function 與 pin_code 欄位，
+--   所以即使本檔執行了 PIN 相關物件，最終狀態仍是「無 PIN」。
 -- =====================================================
 
 
