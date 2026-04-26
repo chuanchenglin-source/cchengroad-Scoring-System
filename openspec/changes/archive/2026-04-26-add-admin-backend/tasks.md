@@ -52,9 +52,9 @@
 ## 9. 推送與 smoke test
 
 - [x] 9.1 確認【測試】DEV ✓、`.claspignore` 補上 `!Admin.html`、push 成功 10 files（含 Admin.html / supabase-client.html / webApp.js）
-- [ ] 9.2 手動 smoke test：開 `?page=Admin` → 用 chuanchenglin@gmail.com + 真實密碼登入 → 確認進入後看到 4 分頁 → 4 個分頁逐一試用（toggle 一個 permission、改一筆 scoring_rule、改一個 member role、加第二個 admin）
-- [ ] 9.3 手動 smoke test 自鎖規則：用 admin A 嘗試停用自己（應顯示「不能停用自己」錯誤）；接著加 admin B、停用 B、回頭嘗試停用 A（剩 A 一個 active 時應顯示「至少要保留 1 個 active admin」錯誤）
-- [ ] 9.4 手動 smoke test session：登入後關閉 tab、重開 `?page=Admin`，應回到登入畫面（驗證 sessionStorage 不是 localStorage）
+- [x] 9.2 手動 smoke test：開 `?page=Admin` → 用 chuanchenglin@gmail.com + 真實密碼登入 → 確認進入後看到 4 分頁 → 4 個分頁逐一試用（toggle 一個 permission、改一筆 scoring_rule、改一個 member role、加第二個 admin）
+- [x] 9.3 手動 smoke test 自鎖規則：用 admin A 嘗試停用自己（應顯示「不能停用自己」錯誤）；接著加 admin B、停用 B、回頭嘗試停用 A（剩 A 一個 active 時應顯示「至少要保留 1 個 active admin」錯誤）
+- [x] 9.4 手動 smoke test session：登入後關閉 tab、重開 `?page=Admin`，應回到登入畫面（驗證 sessionStorage 不是 localStorage）
 
 ## 10. 文件更新
 
