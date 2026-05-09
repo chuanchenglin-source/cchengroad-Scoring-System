@@ -31,6 +31,19 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 
 這是一個為期 8 週的活動積分管理系統「**心成親證班回報系統**」，目前由臨時團隊遠端協作開發。我（Johnson）是中途加入的開發協作者，非主導者，透過 Claude Code 協助撰寫程式碼。
 
+## 兩個系統的正式命名（重要）
+
+整個活動有**兩個獨立的 GAS 系統**，請務必使用以下名稱避免混淆：
+
+| 正式名稱 | repo / 路徑 | GAS 擁有者 | 角色 |
+|---|---|---|---|
+| **計分系統**（**本專案**）| `cchengroad-Scoring-System` | 主工程師 | 隊員自填回報、計分、Dashboard |
+| **偵查官**（姊妹專案）| `cchengroad-Monitor-System` | Johnson | 小隊長 / 審計官查看小隊成員副本加分狀態 |
+
+兩個系統**完全獨立**：不同 GAS、不同部署、不同入口。**偵查官**從計分系統的 Sheet 讀資料（read-only），不寫入。
+
+> 早期文件可能用「監察人員系統」「Monitor-System」「監察小隊」等舊名，**新文件統一用「偵查官」**。
+
 ---
 
 # 相關資源
