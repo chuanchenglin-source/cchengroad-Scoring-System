@@ -21,3 +21,6 @@ desktop.ini
 # ==== Log ====
 *.log
 npm-debug.log*
+
+# ==== Spectra CLI 本地產物（vector index、db 備份等）====
+.spectra/
