@@ -163,23 +163,35 @@ function getUserStatus(userId) {
 }
 
 /**
- * 取得指定使用者的歷史填單紀錄
+ * 取得指定使用者的歷史填單紀錄（含偵查官扣分）
+ * @param {string} userId 使用者 ID（如 'T011_周子維_嘉家久'）
  */
-function getPersonalHistory() {
+function getPersonalHistory(userId) {
   const SHEET_NAME = '每日個人分數結算';
-  let userId ="T01_小巴_大心"
-  
+
   try {
+    if (!userId) {
+      console.error("getPersonalHistory: 缺少 userId 參數");
+      return [];
+    }
+
     const ss = SpreadsheetApp.openById(SS_ID_SCORE);
     const sheet = ss.getSheetByName(SHEET_NAME);
+    if (!sheet) {
+      console.error("getPersonalHistory: 找不到工作表 " + SHEET_NAME);
+      return [];
+    }
     const data = sheet.getDataRange().getValues();
-    
+
     // 移除標題列
     const rows = data.slice(1);
-    
+
     // 過濾出該使用者的資料
     const userRecords = rows.filter(row => String(row[2]) === String(userId));
-    
+
+    // 讀偵查官扣分（含 graceful failure；任何異常都回傳 {}）
+    const deductionsByDateBox = _readActiveDeductions(userId);
+
     // 格式化資料以符合前端需求
     return userRecords.map(row => {
       // 處理日期：將 Google Date 物件轉為 YYYY-MM-DD 字串
@@ -206,21 +218,139 @@ function getPersonalHistory() {
       for (let i = 1; i <= 13; i++) {
         const scoreIndex = 6 + (i - 1) * 2;   // G欄(Index 6)開始，每2格一組
         const contentIndex = 7 + (i - 1) * 2; // H欄(Index 7)開始
-        
+
         record[`box${i}_score`] = row[scoreIndex];
         record[`box${i}_content`] = row[contentIndex];
       }
-      
+
       // 特別處理 BOX 14 (原本欄位表只到 AG，若 BOX 14 是備註，則對應到 AG)
-      // 這裡假設第 14 個 BOX 顯示的是備註內容
-      record[`box14_score`] = 0; // 備註通常無分
-      record[`box14_content`] = row[32]; // AG: 備註
-      console.log(record)
+      record[`box14_score`] = 0;
+      record[`box14_content`] = row[32];
+
+      // 附加扣分：1~14 預設空陣列，再填入該日該 box 的 active 扣分
+      for (let n = 1; n <= 14; n++) {
+        record[`box${n}_deductions`] = [];
+      }
+      const byBox = deductionsByDateBox[dateStr] || {};
+      for (let n = 1; n <= 14; n++) {
+        if (byBox[n] && byBox[n].length > 0) {
+          record[`box${n}_deductions`] = byBox[n];
+        }
+      }
+
       return record;
     });
-    
+
   } catch (e) {
-    Logger.log("Error in getPersonalHistory: " + e.toString());
+    console.error("Error in getPersonalHistory: " + e.toString());
     return [];
+  }
+}
+
+/**
+ * 讀偵查官 Sheet 的 active 扣分記錄，回傳以 (date → box → 扣分陣列) 索引的對照表
+ * - SS_ID_MONITOR_DEDUCTION 未設定／Sheet/分頁不存在／單列格式錯誤等情境一律 fallback
+ * - 不拋例外，最壞回傳 {}
+ *
+ * @param {string} userId
+ * @return {Object<string, Object<number, Array<{score, reason, monitor_id, deduction_id}>>>}
+ */
+function _readActiveDeductions(userId) {
+  const result = {};
+
+  try {
+    if (!SS_ID_MONITOR_DEDUCTION || SS_ID_MONITOR_DEDUCTION === '') {
+      console.error("_readActiveDeductions: SS_ID_MONITOR_DEDUCTION 未設定，跳過扣分讀取");
+      return result;
+    }
+
+    const ss = SpreadsheetApp.openById(SS_ID_MONITOR_DEDUCTION);
+    const sheet = ss.getSheetByName(SHEET_NAME_DEDUCTION);
+    if (!sheet) {
+      console.error("_readActiveDeductions: 找不到偵查官扣分分頁 " + SHEET_NAME_DEDUCTION);
+      return result;
+    }
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return result;
+
+    // 欄位順序（與設計討論文件一致）：
+    // 0:扣分編號 1:被扣人ID 2:填分日期 3:Box編號 4:扣分數值 5:扣分原因
+    // 6:偵查官ID 7:扣分時間 8:狀態 9:撤回者ID 10:撤回時間 11:撤回原因
+    const matches = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const targetId = row[1];
+      if (!targetId || String(targetId) !== String(userId)) continue;
+
+      const status = row[8];
+      if (String(status).toLowerCase() !== 'active') continue;
+
+      const dateVal = row[2];
+      const boxNo = row[3];
+      const score = row[4];
+      if (!dateVal || boxNo === '' || boxNo === null || boxNo === undefined ||
+          score === '' || score === null || score === undefined) {
+        console.warn("_readActiveDeductions: 跳過格式錯誤的扣分列 row=" + (i + 1));
+        continue;
+      }
+
+      const boxNum = Number(boxNo);
+      if (isNaN(boxNum) || boxNum < 1 || boxNum > 14) {
+        console.warn("_readActiveDeductions: 跳過 Box 編號錯誤的扣分列 row=" + (i + 1));
+        continue;
+      }
+
+      const scoreNum = Number(score);
+      if (isNaN(scoreNum)) {
+        console.warn("_readActiveDeductions: 跳過扣分數值非數字的列 row=" + (i + 1));
+        continue;
+      }
+
+      let dateStr;
+      if (dateVal instanceof Date) {
+        dateStr = Utilities.formatDate(dateVal, Session.getScriptTimeZone(), "yyyy-MM-dd");
+      } else {
+        dateStr = String(dateVal).trim();
+      }
+
+      matches.push({
+        deduction_id: Number(row[0]) || (i + 1),
+        date: dateStr,
+        box_no: boxNum,
+        score: scoreNum,
+        reason: String(row[5] || ''),
+        monitor_id: String(row[6] || ''),
+        time: row[7]
+      });
+    }
+
+    // 按扣分時間升冪排序
+    matches.sort((a, b) => {
+      const ta = a.time instanceof Date ? a.time.getTime() : new Date(a.time).getTime();
+      const tb = b.time instanceof Date ? b.time.getTime() : new Date(b.time).getTime();
+      if (isNaN(ta) && isNaN(tb)) return 0;
+      if (isNaN(ta)) return 1;
+      if (isNaN(tb)) return -1;
+      return ta - tb;
+    });
+
+    // 建立索引：result[date][box_no] = [{score, reason, monitor_id, deduction_id}, ...]
+    matches.forEach(m => {
+      if (!result[m.date]) result[m.date] = {};
+      if (!result[m.date][m.box_no]) result[m.date][m.box_no] = [];
+      result[m.date][m.box_no].push({
+        score: m.score,
+        reason: m.reason,
+        monitor_id: m.monitor_id,
+        deduction_id: m.deduction_id
+      });
+    });
+
+    return result;
+
+  } catch (e) {
+    console.error("_readActiveDeductions error: " + e.toString());
+    return {};
   }
 }
