@@ -1,7 +1,6 @@
 ---
 name: spectra-audit
 description: "Audit changed code for security sharp edges — dangerous defaults, type confusion, and silent failures"
-effort: high
 context: fork
 agent: Explore
 disallowedTools: [Edit, Write]

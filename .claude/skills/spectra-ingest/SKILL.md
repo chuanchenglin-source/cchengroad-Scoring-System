@@ -1,7 +1,6 @@
 ---
 name: spectra-ingest
 description: "Update an existing Spectra change from external context"
-effort: high
 license: MIT
 compatibility: Requires spectra CLI.
 metadata:

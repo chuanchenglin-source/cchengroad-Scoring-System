@@ -24,3 +24,4 @@ npm-debug.log*
 
 # ==== Spectra CLI 本地產物（vector index、db 備份等）====
 .spectra/
+openspec/.vector-search.db*
